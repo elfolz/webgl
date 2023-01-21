@@ -56,7 +56,9 @@ loader.load(`./models/planet.glb`,
 		const box = new Box3()
 		box.setFromObject(objects[1])
 		const center = box.getCenter(vector)
-		objects[1].position.set(7.5, 15, -15)
+		objects[1].position.x += (0 - center.x)
+		objects[1].position.y += (5 - center.y)
+		objects[1].position.z += (0 - center.z)
 		scene.add(objects[1])
 		resizeScene()
 	}, undefined, error => {
