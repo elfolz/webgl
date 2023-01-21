@@ -15,7 +15,21 @@ body {
 	overflow: hidden;
 	padding-top: env(safe-area-inset-top, 0);
 	padding-bottom: env(safe-area-inset-bottom, 0);
-	background-color: #000;
+	background: linear-gradient(#000, #000036, #4b0082, #000);
+}
+audio {
+	display: none;
+}
+mark {
+	display: block;
+	position: fixed;
+	top: -900px;
+	right: -900px;
+	border-radius: 50%;
+	width: 1000px;
+	aspect-ratio: 1/1;
+	z-index: 2;
+	box-shadow: 0 0 1000px gold;
 }
 #particles-js {
 	position: absolute;

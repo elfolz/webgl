@@ -21,14 +21,13 @@ const vector = new Vector3()
 const pointer = {x: 0, y: 0}
 const objects = {}
 var mouseDown = false
-var pointerObject
 
 camera.position.z = 7.5
 scene.background = undefined
 renderer. setClearColor(0xffffff, 0)
 renderer.outputEncoding = sRGBEncoding
-const ambientLight = new AmbientLight( 0xffffff, 0.1 )
-const dirLight = new DirectionalLight( 0xefefff, 2.5 )
+const ambientLight = new AmbientLight( 0xffffff, 0.015 )
+const dirLight = new DirectionalLight( 0xefefff, 1.5 )
 dirLight.position.set(10, 10, 10)
 
 scene.add( ambientLight )
@@ -43,6 +42,8 @@ loader.load(`./models/spaceship.glb`,
 		objects[0].position.x += (objects[0].position.x - center.x)
 		objects[0].position.y += (objects[0].position.y - center.y)
 		objects[0].position.z += (objects[0].position.y - center.z)
+		objects[0].rotation.y = Math.PI
+		objects[0].rotation.x = Math.PI / 6
 		scene.add(objects[0])
 		resizeScene()
 	}, undefined, error => {
@@ -116,7 +117,9 @@ document.onreadystatechange = () => {
 	particlesJS.load('particles-js', './js/particles.json')
 }
 document.onclick = () => {
-	if (!pointerObject) return
-	alert('Clicou na nave!')
+	const audio = document.querySelector('audio')
+	audio.volume = 0.5
+	audio.loop = true
+	audio.play()
 }
 animate()
