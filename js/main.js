@@ -1,17 +1,15 @@
 import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
 
-if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
-	navigator.serviceWorker?.register('service-worker.js').then(reg => {
-		reg.addEventListener('updatefound', () => {
-			let newWorker = reg.installing
-			newWorker?.addEventListener('statechange', () => {
-				console.log('Update Installed. Restarting...')
-				if (newWorker.state == 'activated') location.reload(true)
-			})
+navigator.serviceWorker?.register('service-worker.js').then(reg => {
+	reg.addEventListener('updatefound', () => {
+		let newWorker = reg.installing
+		newWorker?.addEventListener('statechange', () => {
+			console.log('Update Installed. Restarting...')
+			if (newWorker.state == 'activated') location.reload(true)
 		})
 	})
-}
+})
 
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const scene = new Scene()
