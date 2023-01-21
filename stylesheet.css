@@ -9,11 +9,13 @@
 	--color-accent: #9966cc;
 }
 body {
-	overflow: hidden;
 	font-family: sans-serif;
-	background-color: #000;
+	overflow: hidden;
 	margin: 0;
 	overflow: hidden;
+	padding-top: env(safe-area-inset-top, 0);
+	padding-bottom: env(safe-area-inset-bottom, 0);
+	background-color: #000;
 }
 #particles-js {
 	position: absolute;
