@@ -1,7 +1,5 @@
-import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector2, Vector3, Raycaster} from './three.module.js'
+import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
-import { OrbitControls } from './OrbitControls.js'
-import { GUI } from './dat.gui.module.js'
 
 if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
 	navigator.serviceWorker?.register('service-worker.js').then(reg => {
@@ -15,62 +13,51 @@ if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
 	})
 }
 
-const gui = new GUI()
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const scene = new Scene()
 const camera = new PerspectiveCamera(95, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
 const loader = new GLTFLoader()
-const controls = new OrbitControls(camera, renderer.domElement)
 const vector = new Vector3()
-const raycaster = new Raycaster()
-const pointer = new Vector2()
+const pointer = {x: 0, y: 0}
 const objects = {}
-const boxes = {}
+var mouseDown = false
 var pointerObject
 
+camera.position.z = 7.5
 scene.background = undefined
-gui.domElement.style.setProperty('display', 'none')
 renderer. setClearColor(0xffffff, 0)
 renderer.outputEncoding = sRGBEncoding
-const ambientLight = new AmbientLight( 0xffffff, 0.5 )
-const dirLight = new DirectionalLight( 0xefefff, 1.5 )
+const ambientLight = new AmbientLight( 0xffffff, 0.1 )
+const dirLight = new DirectionalLight( 0xefefff, 2.5 )
 dirLight.position.set(10, 10, 10)
 
 scene.add( ambientLight )
 scene.add( dirLight )
 
-const cameraFolder = gui.addFolder('Camera')
-cameraFolder.add(camera.position, 'z', 0, 0)
-cameraFolder.open()
-
 loader.load(`./models/spaceship.glb`,
 	gltf => {
-		const object = objects[objects.length] = gltf.scene
+		objects[0] = gltf.scene
+		const box = new Box3()
+		box.setFromObject(objects[0])
+		const center = box.getCenter(vector)
+		objects[0].position.x += (objects[0].position.x - center.x)
+		objects[0].position.y += (objects[0].position.y - center.y)
+		objects[0].position.z += (objects[0].position.y - center.z)
+		scene.add(objects[0])
+		resizeScene()
+	}, undefined, error => {
+		console.log(error)
+	}
+)
 
-		const b = boxes[boxes.length] = new Box3()
-		b.setFromObject(object)
-		const size = b.getSize(vector).length()
-		const center = b.getCenter(vector)
-
-		const objectFolder = gui.addFolder(object.uuid)
-		objectFolder.add(object.rotation, 'x', 0, Math.PI * 2)
-		objectFolder.add(object.rotation, 'y', 0, Math.PI * 2)
-		objectFolder.add(object.rotation, 'z', 0, Math.PI * 2)
-		objectFolder.open()
-
-		camera.near = size / 100
-		camera.far = size * 100
-		camera.position.x += size / 2.0
-		camera.position.y += size / 2.0
-		camera.position.z += size / 2.0
-		camera.lookAt(center)
-
-		object.position.x += (object.position.x - center.x)
-		object.position.y += (object.position.y - center.y)
-		object.position.z += (object.position.z - center.z)
-
-		scene.add(object)
-
+loader.load(`./models/planet.glb`,
+	gltf => {
+		objects[1] = gltf.scene
+		const box = new Box3()
+		box.setFromObject(objects[1])
+		const center = box.getCenter(vector)
+		objects[1].position.set(7.5, 15, -15)
+		scene.add(objects[1])
 		resizeScene()
 	}, undefined, error => {
 		console.log(error)
@@ -81,35 +68,42 @@ function resizeScene() {
 	camera.aspect = document.documentElement.clientWidth / document.documentElement.clientHeight
 	camera.updateProjectionMatrix()
 	renderer.setSize(document.documentElement.clientWidth, document.documentElement.clientHeight)
-	animate()
 }
 
 function animate() {
 	requestAnimationFrame(animate)
-	raycaster.setFromCamera(pointer, camera)
-	handleSpaceshipPointer(raycaster.intersectObjects(scene.children))
+	if (objects[1]) objects[1].rotation.y += 0.001
 	renderer.render(scene, camera)
 }
 
-function handleSpaceshipPointer(intersects) {
-	if (intersects?.length) {
-		let spaceship = getSpaceship(intersects[0].object)
-		if (spaceship) {
-			document.documentElement.style.setProperty('cursor', 'pointer')
-			pointerObject = spaceship
-		} else {
-			document.documentElement.style.setProperty('cursor', null)
-			pointerObject = undefined
-		}
-	} else {
-		document.documentElement.style.setProperty('cursor', null)
-		pointerObject = undefined
-	}
-	function getSpaceship(object) {
-		if (object?.name == 'SpaceShip') return object
-		else if (object.parent) return getSpaceship(object.parent)
-		else return null
-	}
+/* window.onkeydown = e => {
+	if (!object) return
+	keysPressed[e.keyCode] = true
+	if (keysPressed[65]) object.rotation.y -= 0.1 // A
+	if (keysPressed[68]) object.rotation.y += 0.1 // D
+	if (keysPressed[87]) object.rotation.x -= 0.1 // W
+	if (keysPressed[83]) object.rotation.x += 0.1 // S
+}
+window.onkeyup = e => {
+	keysPressed[e.keyCode] = false
+} */
+
+renderer.domElement.onmousedown = () => { mouseDown = true }
+renderer.domElement.onmouseup = () => { mouseDown = false }
+renderer.domElement.onmousemove = e => onMove(e)
+
+renderer.domElement.ontouchstart = () => { mouseDown = true }
+renderer.domElement.ontouchend = () => { mouseDown = false }
+renderer.domElement.ontouchmove = e => onMove(e)
+
+function onMove(e) {
+	if (!mouseDown) return
+	let deltaX = (e.pageX ?? e.touches[0].pageX) - pointer.x
+	let deltaY = (e.pageY ?? e.touches[0].pageY) - pointer.y
+	pointer.x = (e.pageX ?? e.touches[0].pageX)
+	pointer.y = (e.pageY ?? e.touches[0].pageY)
+	objects[0].rotation.y += Math.sign(deltaX) * 0.025
+	objects[0].rotation.x += Math.sign(deltaY) * 0.025
 }
 
 window.onresize = () => resizeScene()
@@ -119,11 +113,8 @@ document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	particlesJS.load('particles-js', './js/particles.json')
 }
-document.onmousemove = e => {
-	pointer.x = ( e.clientX / window.innerWidth ) * 2 - 1
-	pointer.y = - ( e.clientY / window.innerHeight ) * 2 + 1
-}
-/* document.onclick = () => {
+document.onclick = () => {
 	if (!pointerObject) return
 	alert('Clicou na nave!')
-} */
+}
+animate()
