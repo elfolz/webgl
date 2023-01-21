@@ -1,6 +1,6 @@
 {
-	"name": "Elfolz",
-	"short_name": "Elfolz",
+	"name": "WebGL",
+	"short_name": "WebGL",
 	"theme_color": "#00cc99",
 	"icons": [
 			{ "src": "./img/icons/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
@@ -10,5 +10,5 @@
 	],
 	"start_url": ".",
 	"display": "standalone",
-	"background_color": "#00cc99"
+	"background_color": "#000"
 }
