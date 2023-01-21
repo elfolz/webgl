@@ -21,11 +21,11 @@ const scene = new Scene()
 const camera = new PerspectiveCamera(95, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
 const loader = new GLTFLoader()
 const controls = new OrbitControls(camera, renderer.domElement)
-const box = new Box3()
 const vector = new Vector3()
 const raycaster = new Raycaster()
 const pointer = new Vector2()
-var object
+const objects = {}
+const boxes = {}
 var pointerObject
 
 scene.background = undefined
@@ -39,23 +39,24 @@ dirLight.position.set(10, 10, 10)
 scene.add( ambientLight )
 scene.add( dirLight )
 
-loader.load(`./spaceship.glb`,
+const cameraFolder = gui.addFolder('Camera')
+cameraFolder.add(camera.position, 'z', 0, 0)
+cameraFolder.open()
+
+loader.load(`./models/spaceship.glb`,
 	gltf => {
-		object = gltf.scene
+		const object = objects[objects.length] = gltf.scene
 
-		box.setFromObject(object)
+		const b = boxes[boxes.length] = new Box3()
+		b.setFromObject(object)
+		const size = b.getSize(vector).length()
+		const center = b.getCenter(vector)
 
-		const objectFolder = gui.addFolder('Object')
+		const objectFolder = gui.addFolder(object.uuid)
 		objectFolder.add(object.rotation, 'x', 0, Math.PI * 2)
 		objectFolder.add(object.rotation, 'y', 0, Math.PI * 2)
 		objectFolder.add(object.rotation, 'z', 0, Math.PI * 2)
 		objectFolder.open()
-		const cameraFolder = gui.addFolder('Camera')
-		cameraFolder.add(camera.position, 'z', 0, 0)
-		cameraFolder.open()
-		
-		const size = box.getSize(vector).length()
-		const center = box.getCenter(vector)
 
 		camera.near = size / 100
 		camera.far = size * 100
@@ -63,7 +64,6 @@ loader.load(`./spaceship.glb`,
 		camera.position.y += size / 2.0
 		camera.position.z += size / 2.0
 		camera.lookAt(center)
-		camera.min
 
 		object.position.x += (object.position.x - center.x)
 		object.position.y += (object.position.y - center.y)
@@ -86,7 +86,6 @@ function resizeScene() {
 
 function animate() {
 	requestAnimationFrame(animate)
-	controls.update()
 	raycaster.setFromCamera(pointer, camera)
 	handleSpaceshipPointer(raycaster.intersectObjects(scene.children))
 	renderer.render(scene, camera)
