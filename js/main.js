@@ -11,6 +11,8 @@ navigator.serviceWorker?.register('service-worker.js').then(reg => {
 	})
 })
 
+var audioAuthorized = false
+
 const SE = new Audio()
 SE.src = '../audio/move.mp3'
 SE.preload = 'auto'
@@ -85,7 +87,7 @@ function animate() {
 	if (mouseDown == 'right') objects[0].rotation.y += 0.01
 	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
 	if (mouseDown == 'down') objects[0].rotation.x += 0.01
-	if (mouseDown && !SEPlayeed) {
+	if (audioAuthorized && mouseDown && !SEPlayeed) {
 		SE.play()
 		SEPlayeed = true
 	} else if (SE.currentTime >= 0.1) {
@@ -112,7 +114,7 @@ window.onkeydown = e => {
 		document.querySelector('#button-down').classList.add('active')
 		objects[0].rotation.x += 0.1
 	}
-	if (!SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
+	if (audioAuthorized && !SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
 		SE.play()
 		SEPlayeed = true
 	}
@@ -172,7 +174,7 @@ function initControls() {
 	document.querySelector('#button-down').outouchend = () => mouseDown = null
 	document.querySelector('#button-down').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-down').ontouchcancel = () => mouseDown = null
-	
+
 	document.querySelector('#button-fly').ontouchstart = () => alert('Em breve!')
 }
 
@@ -185,6 +187,7 @@ document.onreadystatechange = () => {
 	initControls()
 }
 document.onclick = () => {
+	audioAuthorized = true
 	const audio = document.querySelector('audio')
 	audio.volume = 0.5
 	audio.loop = true
