@@ -300,7 +300,7 @@ function initControls() {
 }) */
 
 window.onresize = () => resizeScene()
-window.oncontextmenu = () => {return false}
+window.oncontextmenu = () => {return isLocalhost()}
 
 document.body.appendChild(renderer.domElement)
 document.body.appendChild(stats.dom)
@@ -313,8 +313,10 @@ document.onreadystatechange = () => {
 	initControls()
 }
 document.onclick = () => {
+	if (!audioAuthorized) {
+		if (!isLocalhost()) document.querySelector('#bgm').play()
+	}
 	audioAuthorized = true
-	if (!isLocalhost()) document.querySelector('#bgm').play()
 }
 
 function isLocalhost() {
