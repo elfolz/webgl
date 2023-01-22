@@ -11,6 +11,11 @@ navigator.serviceWorker?.register('service-worker.js').then(reg => {
 	})
 })
 
+const SE = new Audio()
+SE.src = '../audio/move.mp3'
+SE.preload = 'auto'
+var SEPlayeed = false
+
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const scene = new Scene()
 const camera = new PerspectiveCamera(95, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
@@ -18,7 +23,8 @@ const loader = new GLTFLoader()
 const vector = new Vector3()
 const pointer = {x: 0, y: 0}
 const objects = {}
-var mouseDown = false
+const keysPressed = {}
+var mouseDown = null
 
 camera.position.z = 7.5
 scene.background = undefined
@@ -75,21 +81,52 @@ function animate() {
 	requestAnimationFrame(animate)
 	if (objects[1]) objects[1].rotation.y += 0.001
 	renderer.render(scene, camera)
+	if (mouseDown == 'left') objects[0].rotation.y -= 0.01
+	if (mouseDown == 'right') objects[0].rotation.y += 0.01
+	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
+	if (mouseDown == 'down') objects[0].rotation.x += 0.01
+	if (mouseDown && !SEPlayeed) {
+		SE.play()
+		SEPlayeed = true
+	} else if (SE.currentTime >= 0.1) {
+		SEPlayeed = false
+	}
 }
 
-/* window.onkeydown = e => {
-	if (!object) return
+window.onkeydown = e => {
+	if (!objects[0]) return
 	keysPressed[e.keyCode] = true
-	if (keysPressed[65]) object.rotation.y -= 0.1 // A
-	if (keysPressed[68]) object.rotation.y += 0.1 // D
-	if (keysPressed[87]) object.rotation.x -= 0.1 // W
-	if (keysPressed[83]) object.rotation.x += 0.1 // S
+	if (keysPressed[65]) {
+		document.querySelector('#button-left').classList.add('active')
+		objects[0].rotation.y -= 0.1
+	}
+	if (keysPressed[68]) {
+		document.querySelector('#button-right').classList.add('active')
+		objects[0].rotation.y += 0.1
+	}
+	if (keysPressed[87]) {
+		document.querySelector('#button-up').classList.add('active')
+		objects[0].rotation.x -= 0.1
+	}
+	if (keysPressed[83]) {
+		document.querySelector('#button-down').classList.add('active')
+		objects[0].rotation.x += 0.1
+	}
+	if (!SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
+		SE.play()
+		SEPlayeed = true
+	}
 }
 window.onkeyup = e => {
 	keysPressed[e.keyCode] = false
-} */
+	if (e.keyCode == 65) document.querySelector('#button-left').classList.remove('active')
+	if (e.keyCode == 68) document.querySelector('#button-right').classList.remove('active')
+	if (e.keyCode == 87) document.querySelector('#button-up').classList.remove('active')
+	if (e.keyCode == 83) document.querySelector('#button-down').classList.remove('active')
+	if (SE.currentTime >= 0.1) SEPlayeed = false
+}
 
-renderer.domElement.onmousedown = () => { mouseDown = true }
+/* renderer.domElement.onmousedown = () => { mouseDown = true }
 renderer.domElement.onmouseup = () => { mouseDown = false }
 renderer.domElement.onmousemove = e => onMove(e)
 
@@ -105,6 +142,38 @@ function onMove(e) {
 	pointer.y = (e.pageY ?? e.touches[0].pageY)
 	objects[0].rotation.y += Math.sign(deltaX) * 0.025
 	objects[0].rotation.x += Math.sign(deltaY) * 0.025
+} */
+
+function initControls() {
+	document.querySelector('#button-left').onmousedown = () => mouseDown = 'left'
+	document.querySelector('#button-left').onmouseup = () => mouseDown = null
+	document.querySelector('#button-right').onmousedown = () => mouseDown = 'right'
+	document.querySelector('#button-right').onmouseup = () => mouseDown = null
+	document.querySelector('#button-up').onmousedown = () => mouseDown = 'up'
+	document.querySelector('#button-up').onmouseup = () => mouseDown = null
+	document.querySelector('#button-down').onmousedown = () => mouseDown = 'down'
+	document.querySelector('#button-down').onmouseup = () => mouseDown = null
+
+	document.querySelector('#button-fly').onmousedown = () => alert('Em breve!')
+
+	document.querySelector('#button-left').ontouchstart = () => mouseDown = 'left'
+	document.querySelector('#button-left').outouchend = () => mouseDown = null
+	document.querySelector('#button-left').ontouchleave = () => mouseDown = null
+	document.querySelector('#button-left').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-right').ontouchstart = () => mouseDown = 'right'
+	document.querySelector('#button-right').outouchend = () => mouseDown = null
+	document.querySelector('#button-right').ontouchleave = () => mouseDown = null
+	document.querySelector('#button-right').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-up').ontouchstart = () => mouseDown = 'up'
+	document.querySelector('#button-up').outouchend = () => mouseDown = null
+	document.querySelector('#button-up').ontouchleave = () => mouseDown = null
+	document.querySelector('#button-up').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-down').ontouchstart = () => mouseDown = 'down'
+	document.querySelector('#button-down').outouchend = () => mouseDown = null
+	document.querySelector('#button-down').ontouchleave = () => mouseDown = null
+	document.querySelector('#button-down').ontouchcancel = () => mouseDown = null
+	
+	document.querySelector('#button-fly').ontouchstart = () => alert('Em breve!')
 }
 
 window.onresize = () => resizeScene()
@@ -113,11 +182,17 @@ document.body.appendChild(renderer.domElement)
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	particlesJS.load('particles-js', './js/particles.json')
+	initControls()
 }
 document.onclick = () => {
 	const audio = document.querySelector('audio')
 	audio.volume = 0.5
 	audio.loop = true
-	audio.play()
+	if (!isLocalhost()) audio.play()
 }
+
+function isLocalhost() {
+	return ['localhost', '127.0.0.1', '192.168.0.110'].includes(location.hostname)
+}
+
 animate()
