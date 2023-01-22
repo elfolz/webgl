@@ -2,15 +2,17 @@ import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLig
 import { GLTFLoader } from './GLTFLoader.js'
 import Stats from './stats.module.js'
 
-navigator.serviceWorker?.register('service-worker.js').then(reg => {
-	reg.addEventListener('updatefound', () => {
-		let newWorker = reg.installing
-		newWorker?.addEventListener('statechange', () => {
-			console.log('Update Installed. Restarting...')
-			if (newWorker.state == 'activated') location.reload(true)
+if (!isLocalhost()) {
+	navigator.serviceWorker?.register('service-worker.js').then(reg => {
+		reg.addEventListener('updatefound', () => {
+			let newWorker = reg.installing
+			newWorker?.addEventListener('statechange', () => {
+				console.log('Update Installed. Restarting...')
+				if (newWorker.state == 'activated') location.reload(true)
+			})
 		})
 	})
-})
+}
 
 const UP = 12
 const LEFT = 14
@@ -28,8 +30,6 @@ const MENU = 9
 const WIND = 8
 
 var audioAuthorized = false
-var SEPlayeed = false
-var musicOff = false
 var touchControl = true
 
 const clock = new Clock()
@@ -150,14 +150,24 @@ function updateRotation() {
 	if (rotate == 'up') objects[0].rotation.x -= 0.01
 	if (rotate == 'down') objects[0].rotation.x += 0.01
 	if (audioAuthorized && rotate && lastDirection != rotate) {
-		document.querySelector('#se').currentTime = 0
 		document.querySelector('#se').play()
 	}
 	lastDirection = rotate
 }
 
 function updateFly() {
-	if (!flying) return
+
+	let music = document.querySelector('#fly')
+
+	if (flying) {
+		document.querySelector('#rays').classList.add('show')
+		if (music.currentTime <= 0) music.play()
+	} else {
+		document.querySelector('#rays').classList.remove('show')
+		music.pause()
+		music.currentTime = 0
+		return
+	}
 
 	let wDir = camera.getWorldDirection(vector)
 
@@ -229,14 +239,12 @@ function initControls() {
 	}
 	document.querySelector('#menu-button-music-off').onclick = e => {
 		e.preventDefault()
-		musicOff = true
 		document.querySelector('#bgm').pause()
 		document.querySelector('#menu-button-music-off').classList.add('off')
 		document.querySelector('#menu-button-music-on').classList.remove('off')
 	}
 	document.querySelector('#menu-button-music-on').onclick = e => {
 		e.preventDefault()
-		musicOff = false
 		document.querySelector('#bgm').play()
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
@@ -315,8 +323,8 @@ document.onreadystatechange = () => {
 document.onclick = () => {
 	if (!audioAuthorized) {
 		if (!isLocalhost()) document.querySelector('#bgm').play()
+		audioAuthorized = true
 	}
-	audioAuthorized = true
 }
 
 function isLocalhost() {
