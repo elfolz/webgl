@@ -1,5 +1,8 @@
-import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
+import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
+import { OrbitControls } from './OrbitControls.js'
+import { GUI } from './dat.gui.module.js'
+import Stats from './stats.module.js'
 
 navigator.serviceWorker?.register('service-worker.js').then(reg => {
 	reg.addEventListener('updatefound', () => {
@@ -31,17 +34,27 @@ var SEPlayeed = false
 var musicOff = false
 var touchControl = true
 
+const gui = new GUI()
+gui.domElement.style.setProperty('display', 'none')
+
+const clock = new Clock()
+const stats = new Stats()
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const scene = new Scene()
-const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 1, 1000)
+const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
 const loader = new GLTFLoader()
 const vector = new Vector3()
 const objects = {}
 const keysPressed = {}
 var mouseDown
 var gamepad
+var floatY = 0
+var revertFloat = false
+var flying = false
+var clockDelta = 0
+var fpsLimit = 1 / 60
+const controls = new OrbitControls(camera, renderer.domElement)
 
-camera.position.z = 10
 scene.background = undefined
 renderer. setClearColor(0xffffff, 0)
 renderer.outputEncoding = sRGBEncoding
@@ -55,14 +68,12 @@ scene.add( dirLight )
 loader.load(`./models/spaceship.glb`,
 	gltf => {
 		objects[0] = gltf.scene
-		const box = new Box3()
-		box.setFromObject(objects[0])
-		const center = box.getCenter(vector)
-		objects[0].position.x += (objects[0].position.x - center.x)
-		objects[0].position.y += (objects[0].position.y - center.y)
-		objects[0].position.z += (objects[0].position.y - center.z)
+		objects[0].position.y = -3
+		objects[0].position.z = -10
 		objects[0].rotation.y = Math.PI
-		objects[0].rotation.x = Math.PI / 6
+		const cameraFolder = gui.addFolder('Camera')
+		cameraFolder.add(camera.position, 'z', 0, 0)
+		cameraFolder.open()
 		scene.add(objects[0])
 		resizeScene()
 	}, undefined, error => {
@@ -76,8 +87,8 @@ loader.load(`./models/planet.glb`,
 		const box = new Box3()
 		box.setFromObject(objects[1])
 		const center = box.getCenter(vector)
-		objects[1].position.x += (0 - center.x)
-		objects[1].position.y = 50
+		objects[1].position.x = center.x
+		objects[1].position.y = 40
 		objects[1].position.z = -75
 		objects[1].scale.set(10, 10, 10)
 		scene.add(objects[1])
@@ -87,6 +98,10 @@ loader.load(`./models/planet.glb`,
 	}
 )
 
+function alignCamera() {
+}
+
+
 function resizeScene() {
 	camera.aspect = document.documentElement.clientWidth / document.documentElement.clientHeight
 	camera.updateProjectionMatrix()
@@ -95,15 +110,39 @@ function resizeScene() {
 
 function animate() {
 	requestAnimationFrame(animate)
-	if (objects[1]) objects[1].rotation.y += 0.001
-	renderer.render(scene, camera)
-	updateTouchButtons()
-	updateGamepad()
+	clockDelta += clock.getDelta()
+	if (document.hidden) return
+	if (clockDelta > fpsLimit) {
+		if (objects[0]) {
+			if (revertFloat) {
+				if (floatY <= -0.0025) revertFloat = false
+				else floatY -= 0.00001
+			} else {
+				if (floatY >= 0.0025) revertFloat = true
+				else floatY += 0.00001
+			}
+			floatY = Math.min(floatY, 0.0025)
+			objects[0].translateY(floatY)
+
+		}
+		if (objects[1]) objects[1].rotation.y += 0.001
+		renderer.render(scene, camera)
+		updateTouchButtons()
+		updateGamepad()
+		updateFly()
+		stats.update()
+		clockDelta = clockDelta % fpsLimit
+	}
+
 }
 
 window.onkeydown = e => {
 	if (!objects[0]) return
 	keysPressed[e.keyCode] = true
+	if (keysPressed[32]) {
+		document.querySelector('#button-fly').classList.add('active')
+		flying = true
+	}
 	if (keysPressed[65]) {
 		document.querySelector('#button-left').classList.add('active')
 		objects[0].rotation.y -= 0.1
@@ -114,11 +153,11 @@ window.onkeydown = e => {
 	}
 	if (keysPressed[87]) {
 		document.querySelector('#button-up').classList.add('active')
-		objects[0].rotation.x -= 0.1
+		objects[0].rotation.x += 0.1
 	}
 	if (keysPressed[83]) {
 		document.querySelector('#button-down').classList.add('active')
-		objects[0].rotation.x += 0.1
+		objects[0].rotation.x -= 0.1
 	}
 	if (audioAuthorized && !SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
 		document.querySelector('#se').play()
@@ -127,6 +166,10 @@ window.onkeydown = e => {
 }
 window.onkeyup = e => {
 	keysPressed[e.keyCode] = false
+	if (e.keyCode == 32) {
+		document.querySelector('#button-fly').classList.remove('active')
+		flying = false
+	}
 	if (e.keyCode == 65) document.querySelector('#button-left').classList.remove('active')
 	if (e.keyCode == 68) document.querySelector('#button-right').classList.remove('active')
 	if (e.keyCode == 87) document.querySelector('#button-up').classList.remove('active')
@@ -145,6 +188,12 @@ function updateTouchButtons() {
 	} else if (document.querySelector('#se').currentTime >= 0.1) {
 		SEPlayeed = false
 	}
+}
+
+function updateFly() {
+	if (!flying) return
+	objects[0].position.z -= 0.1
+	camera.position.z -= 0.1
 }
 
 function updateGamepad() {
@@ -213,30 +262,35 @@ function initControls() {
 	document.querySelector('#button-down').onmousedown = () => mouseDown = 'down'
 	document.querySelector('#button-down').onmouseup = () => mouseDown = null
 
-	document.querySelector('#button-fly').onmousedown = () => updateGamepad()
+	document.querySelector('#button-fly').onmousedown = () => flying = true
+	document.querySelector('#button-fly').onmouseup = () => flying = false
 
 	document.querySelector('#button-left').ontouchstart = () => mouseDown = 'left'
-	document.querySelector('#button-left').outouchend = () => mouseDown = null
+	document.querySelector('#button-left').ontouchend = () => mouseDown = null
 	document.querySelector('#button-left').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-left').ontouchcancel = () => mouseDown = null
 	document.querySelector('#button-left').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-right').ontouchstart = () => mouseDown = 'right'
-	document.querySelector('#button-right').outouchend = () => mouseDown = null
+	document.querySelector('#button-right').ontouchend = () => mouseDown = null
 	document.querySelector('#button-right').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-right').ontouchcancel = () => mouseDown = null
 	document.querySelector('#button-right').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-up').ontouchstart = () => mouseDown = 'up'
-	document.querySelector('#button-up').outouchend = () => mouseDown = null
+	document.querySelector('#button-up').ontouchend = () => mouseDown = null
 	document.querySelector('#button-up').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-up').ontouchcancel = () => mouseDown = null
 	document.querySelector('#button-up').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-down').ontouchstart = () => mouseDown = 'down'
-	document.querySelector('#button-down').outouchend = () => mouseDown = null
+	document.querySelector('#button-down').ontouchend = () => mouseDown = null
 	document.querySelector('#button-down').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-down').ontouchcancel = () => mouseDown = null
 	document.querySelector('#button-down').ontouchmove = () => mouseDown = null
 
-	document.querySelector('#button-fly').onclick = () => updateGamepad()
+	document.querySelector('#button-fly').ontouchstart = () => flying = true
+	document.querySelector('#button-fly').ontouchend = () => flying = false
+	document.querySelector('#button-fly').ontouchleave = () => flying = false
+	document.querySelector('#button-fly').ontouchcancel = () => flying = false
+	document.querySelector('#button-fly').ontouchmove = () => flying = false
 }
 
 /* window.addEventListener('deviceorientation', e => {
@@ -246,16 +300,19 @@ function initControls() {
 window.onresize = () => resizeScene()
 
 document.body.appendChild(renderer.domElement)
+document.body.appendChild(stats.dom)
+stats.begin()
+
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	particlesJS.load('particles', './js/particles.json')
 	document.querySelector('#bgm').volume = 0.25
 	initControls()
 }
-document.onclick = () => {
+/* document.onclick = () => {
 	audioAuthorized = true
 	if (!isLocalhost()) document.querySelector('#bgm').play()
-}
+} */
 
 function isLocalhost() {
 	return ['localhost', '127.0.0.1', '192.168.0.110'].includes(location.hostname)
