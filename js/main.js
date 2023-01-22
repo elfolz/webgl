@@ -1,5 +1,5 @@
-import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
-import { GLTFLoader } from './GLTFLoader.js'
+import {WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from '/js/three.module.js'
+import { GLTFLoader } from '/js/GLTFLoader.js'
 
 navigator.serviceWorker?.register('service-worker.js').then(reg => {
 	reg.addEventListener('updatefound', () => {
@@ -35,7 +35,7 @@ dirLight.position.set(10, 10, 10)
 scene.add( ambientLight )
 scene.add( dirLight )
 
-loader.load(`./models/spaceship.glb`,
+loader.load(`/models/spaceship.glb`,
 	gltf => {
 		objects[0] = gltf.scene
 		const box = new Box3()
@@ -53,7 +53,7 @@ loader.load(`./models/spaceship.glb`,
 	}
 )
 
-loader.load(`./models/planet.glb`,
+loader.load(`/models/planet.glb`,
 	gltf => {
 		objects[1] = gltf.scene
 		const box = new Box3()
@@ -179,7 +179,7 @@ window.onresize = () => resizeScene()
 document.body.appendChild(renderer.domElement)
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
-	particlesJS.load('particles-js', './js/particles.json')
+	particlesJS.load('particles-js', '/js/particles.json')
 	initControls()
 }
 document.onclick = () => {
