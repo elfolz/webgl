@@ -12,10 +12,6 @@ navigator.serviceWorker?.register('service-worker.js').then(reg => {
 })
 
 var audioAuthorized = false
-
-const SE = new Audio()
-SE.src = '../audio/move.mp3'
-SE.preload = 'auto'
 var SEPlayeed = false
 
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
@@ -88,9 +84,9 @@ function animate() {
 	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
 	if (mouseDown == 'down') objects[0].rotation.x += 0.01
 	if (audioAuthorized && mouseDown && !SEPlayeed) {
-		SE.play()
+		document.querySelector('#se').play()
 		SEPlayeed = true
-	} else if (SE.currentTime >= 0.1) {
+	} else if (document.querySelector('#se').currentTime >= 0.1) {
 		SEPlayeed = false
 	}
 }
@@ -115,7 +111,7 @@ window.onkeydown = e => {
 		objects[0].rotation.x += 0.1
 	}
 	if (audioAuthorized && !SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
-		SE.play()
+		document.querySelector('#se').play()
 		SEPlayeed = true
 	}
 }
@@ -125,7 +121,7 @@ window.onkeyup = e => {
 	if (e.keyCode == 68) document.querySelector('#button-right').classList.remove('active')
 	if (e.keyCode == 87) document.querySelector('#button-up').classList.remove('active')
 	if (e.keyCode == 83) document.querySelector('#button-down').classList.remove('active')
-	if (SE.currentTime >= 0.1) SEPlayeed = false
+	if (document.querySelector('#se').currentTime >= 0.1) SEPlayeed = false
 }
 
 /* renderer.domElement.onmousedown = () => { mouseDown = true }
@@ -188,10 +184,9 @@ document.onreadystatechange = () => {
 }
 document.onclick = () => {
 	audioAuthorized = true
-	const audio = document.querySelector('audio')
-	audio.volume = 0.5
-	audio.loop = true
-	if (!isLocalhost()) audio.play()
+	const bgm = document.querySelector('#bgm')
+	bgm.volume = 0.25
+	if (!isLocalhost()) bgm.play()
 }
 
 function isLocalhost() {
