@@ -1,7 +1,5 @@
 import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
-import { OrbitControls } from './OrbitControls.js'
-import { GUI } from './dat.gui.module.js'
 import Stats from './stats.module.js'
 
 navigator.serviceWorker?.register('service-worker.js').then(reg => {
@@ -34,9 +32,6 @@ var SEPlayeed = false
 var musicOff = false
 var touchControl = true
 
-const gui = new GUI()
-gui.domElement.style.setProperty('display', 'none')
-
 const clock = new Clock()
 const stats = new Stats()
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
@@ -46,14 +41,14 @@ const loader = new GLTFLoader()
 const vector = new Vector3()
 const objects = {}
 const keysPressed = {}
-var mouseDown
+var rotate
+var lastDirection
 var gamepad
 var floatY = 0
 var revertFloat = false
 var flying = false
 var clockDelta = 0
 var fpsLimit = 1 / 60
-const controls = new OrbitControls(camera, renderer.domElement)
 
 scene.background = undefined
 renderer. setClearColor(0xffffff, 0)
@@ -71,9 +66,6 @@ loader.load(`./models/spaceship.glb`,
 		objects[0].position.y = -3
 		objects[0].position.z = -10
 		objects[0].rotation.y = Math.PI
-		const cameraFolder = gui.addFolder('Camera')
-		cameraFolder.add(camera.position, 'z', 0, 0)
-		cameraFolder.open()
 		scene.add(objects[0])
 		resizeScene()
 	}, undefined, error => {
@@ -98,10 +90,6 @@ loader.load(`./models/planet.glb`,
 	}
 )
 
-function alignCamera() {
-}
-
-
 function resizeScene() {
 	camera.aspect = document.documentElement.clientWidth / document.documentElement.clientHeight
 	camera.updateProjectionMatrix()
@@ -112,88 +100,29 @@ function animate() {
 	requestAnimationFrame(animate)
 	clockDelta += clock.getDelta()
 	if (document.hidden) return
-	if (clockDelta > fpsLimit) {
-		if (objects[0]) {
-			if (revertFloat) {
-				if (floatY <= -0.0025) revertFloat = false
-				else floatY -= 0.00001
-			} else {
-				if (floatY >= 0.0025) revertFloat = true
-				else floatY += 0.00001
-			}
-			floatY = Math.min(floatY, 0.0025)
-			objects[0].translateY(floatY)
+	if (clockDelta < fpsLimit) return
+	renderer.render(scene, camera)
+	updateObjectsAnimations()
+	updateRotation()
+	updateGamepad()
+	updateFly()
+	stats.update()
+	clockDelta = clockDelta % fpsLimit
+}
 
+function updateObjectsAnimations() {
+	if (objects[0]) {
+		if (revertFloat) {
+			if (floatY <= -0.0025) revertFloat = false
+			else floatY -= 0.00001
+		} else {
+			if (floatY >= 0.0025) revertFloat = true
+			else floatY += 0.00001
 		}
-		if (objects[1]) objects[1].rotation.y += 0.001
-		renderer.render(scene, camera)
-		updateTouchButtons()
-		updateGamepad()
-		updateFly()
-		stats.update()
-		clockDelta = clockDelta % fpsLimit
+		floatY = Math.min(floatY, 0.0025)
+		objects[0].translateY(floatY)
 	}
-
-}
-
-window.onkeydown = e => {
-	if (!objects[0]) return
-	keysPressed[e.keyCode] = true
-	if (keysPressed[32]) {
-		document.querySelector('#button-fly').classList.add('active')
-		flying = true
-	}
-	if (keysPressed[65]) {
-		document.querySelector('#button-left').classList.add('active')
-		objects[0].rotation.y -= 0.1
-	}
-	if (keysPressed[68]) {
-		document.querySelector('#button-right').classList.add('active')
-		objects[0].rotation.y += 0.1
-	}
-	if (keysPressed[87]) {
-		document.querySelector('#button-up').classList.add('active')
-		objects[0].rotation.x += 0.1
-	}
-	if (keysPressed[83]) {
-		document.querySelector('#button-down').classList.add('active')
-		objects[0].rotation.x -= 0.1
-	}
-	if (audioAuthorized && !SEPlayeed && [65, 68, 87, 83].includes(e.keyCode)) {
-		document.querySelector('#se').play()
-		SEPlayeed = true
-	}
-}
-window.onkeyup = e => {
-	keysPressed[e.keyCode] = false
-	if (e.keyCode == 32) {
-		document.querySelector('#button-fly').classList.remove('active')
-		flying = false
-	}
-	if (e.keyCode == 65) document.querySelector('#button-left').classList.remove('active')
-	if (e.keyCode == 68) document.querySelector('#button-right').classList.remove('active')
-	if (e.keyCode == 87) document.querySelector('#button-up').classList.remove('active')
-	if (e.keyCode == 83) document.querySelector('#button-down').classList.remove('active')
-	if (document.querySelector('#se').currentTime >= 0.1) SEPlayeed = false
-}
-
-function updateTouchButtons() {
-	if (mouseDown == 'left') objects[0].rotation.y -= 0.01
-	if (mouseDown == 'right') objects[0].rotation.y += 0.01
-	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
-	if (mouseDown == 'down') objects[0].rotation.x += 0.01
-	if (audioAuthorized && mouseDown && !SEPlayeed) {
-		document.querySelector('#se').play()
-		SEPlayeed = true
-	} else if (document.querySelector('#se').currentTime >= 0.1) {
-		SEPlayeed = false
-	}
-}
-
-function updateFly() {
-	if (!flying) return
-	objects[0].position.z -= 0.1
-	camera.position.z -= 0.1
+	if (objects[1]) objects[1].rotation.y += 0.001
 }
 
 function updateGamepad() {
@@ -211,18 +140,84 @@ function updateGamepad() {
 		document.querySelector('#menu-button-touch-off').classList.remove('off')
 		return
 	}
-	if (gamepad.axes[0] <= -0.5 || gamepad.buttons[LEFT].pressed) mouseDown = 'left'
-	else if (gamepad.axes[0] >= 0.5 || gamepad.buttons[RIGHT].pressed) mouseDown = 'right'
-	else if (gamepad.axes[1] <= -0.5 || gamepad.buttons[UP].pressed) mouseDown = 'up'
-	else if (gamepad.axes[1] >= 0.5 || gamepad.buttons[DOWN].pressed) mouseDown = 'down'
-	else mouseDown = null
+	if (gamepad.axes[0] <= -0.5 || gamepad.buttons[LEFT].pressed) rotate = 'left'
+	else if (gamepad.axes[0] >= 0.5 || gamepad.buttons[RIGHT].pressed) rotate = 'right'
+	else if (gamepad.axes[1] <= -0.5 || gamepad.buttons[UP].pressed) rotate = 'up'
+	else if (gamepad.axes[1] >= 0.5 || gamepad.buttons[DOWN].pressed) rotate = 'down'
+	else rotate = null
+	flying = gamepad.buttons[A].pressed
+}
+
+function updateRotation() {
+	if (rotate == 'left') objects[0].rotation.y -= 0.01
+	if (rotate == 'right') objects[0].rotation.y += 0.01
+	if (rotate == 'up') objects[0].rotation.x -= 0.01
+	if (rotate == 'down') objects[0].rotation.x += 0.01
+	if (audioAuthorized && rotate && lastDirection != rotate) {
+		document.querySelector('#se').currentTime = 0
+		document.querySelector('#se').play()
+	}
+	lastDirection = rotate
+}
+
+function updateFly() {
+	if (!flying) return
+	objects[0].position.z -= 0.1
+	camera.position.z -= 0.1
+}
+
+window.onkeydown = e => {
+	if (!objects[0]) return
+	keysPressed[e.keyCode] = true
+	if (keysPressed[32]) {
+		document.querySelector('#button-fly').classList.add('active')
+		flying = true
+	}
+	if (keysPressed[65]) {
+		document.querySelector('#button-left').classList.add('active')
+		rotate = 'left'
+	}
+	if (keysPressed[68]) {
+		document.querySelector('#button-right').classList.add('active')
+		rotate = 'right'
+	}
+	if (keysPressed[87]) {
+		document.querySelector('#button-up').classList.add('active')
+		rotate = 'up'
+	}
+	if (keysPressed[83]) {
+		document.querySelector('#button-down').classList.add('active')
+		rotate = 'down'
+	}
+}
+window.onkeyup = e => {
+	keysPressed[e.keyCode] = false
+	if (e.keyCode == 32) {
+		document.querySelector('#button-fly').classList.remove('active')
+		flying = false
+	}
+	if (e.keyCode == 65) {
+		document.querySelector('#button-left').classList.remove('active')
+		rotate = null
+	}
+	if (e.keyCode == 68) {
+		document.querySelector('#button-right').classList.remove('active')
+		rotate = null
+	}
+	if (e.keyCode == 87) {
+		document.querySelector('#button-up').classList.remove('active')
+		rotate = null
+	}
+	if (e.keyCode == 83) {
+		document.querySelector('#button-down').classList.remove('active')
+		rotate = null
+	}
 }
 
 function initControls() {
 	document.querySelector('#button-config').onclick = () => {
 		document.querySelector('#menu-config').classList.toggle('opened')
 	}
-
 	document.querySelector('#menu-button-music-off').onclick = e => {
 		e.preventDefault()
 		musicOff = true
@@ -237,7 +232,6 @@ function initControls() {
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
 	}
-
 	document.querySelector('#menu-button-touch-on').onclick = e => {
 		e.preventDefault()
 		touchControl = true
@@ -252,39 +246,38 @@ function initControls() {
 		document.querySelector('#menu-button-touch-on').classList.remove('off')
 		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
 	}
-
-	document.querySelector('#button-left').onmousedown = () => mouseDown = 'left'
-	document.querySelector('#button-left').onmouseup = () => mouseDown = null
-	document.querySelector('#button-right').onmousedown = () => mouseDown = 'right'
-	document.querySelector('#button-right').onmouseup = () => mouseDown = null
-	document.querySelector('#button-up').onmousedown = () => mouseDown = 'up'
-	document.querySelector('#button-up').onmouseup = () => mouseDown = null
-	document.querySelector('#button-down').onmousedown = () => mouseDown = 'down'
-	document.querySelector('#button-down').onmouseup = () => mouseDown = null
+	document.querySelector('#button-left').onmousedown = () => rotate = 'left'
+	document.querySelector('#button-left').onmouseup = () => rotate = null
+	document.querySelector('#button-right').onmousedown = () => rotate = 'right'
+	document.querySelector('#button-right').onmouseup = () => rotate = null
+	document.querySelector('#button-up').onmousedown = () => rotate = 'up'
+	document.querySelector('#button-up').onmouseup = () => rotate = null
+	document.querySelector('#button-down').onmousedown = () => rotate = 'down'
+	document.querySelector('#button-down').onmouseup = () => rotate = null
 
 	document.querySelector('#button-fly').onmousedown = () => flying = true
 	document.querySelector('#button-fly').onmouseup = () => flying = false
 
-	document.querySelector('#button-left').ontouchstart = () => mouseDown = 'left'
-	document.querySelector('#button-left').ontouchend = () => mouseDown = null
-	document.querySelector('#button-left').ontouchleave = () => mouseDown = null
-	document.querySelector('#button-left').ontouchcancel = () => mouseDown = null
-	document.querySelector('#button-left').ontouchmove = () => mouseDown = null
-	document.querySelector('#button-right').ontouchstart = () => mouseDown = 'right'
-	document.querySelector('#button-right').ontouchend = () => mouseDown = null
-	document.querySelector('#button-right').ontouchleave = () => mouseDown = null
-	document.querySelector('#button-right').ontouchcancel = () => mouseDown = null
-	document.querySelector('#button-right').ontouchmove = () => mouseDown = null
-	document.querySelector('#button-up').ontouchstart = () => mouseDown = 'up'
-	document.querySelector('#button-up').ontouchend = () => mouseDown = null
-	document.querySelector('#button-up').ontouchleave = () => mouseDown = null
-	document.querySelector('#button-up').ontouchcancel = () => mouseDown = null
-	document.querySelector('#button-up').ontouchmove = () => mouseDown = null
-	document.querySelector('#button-down').ontouchstart = () => mouseDown = 'down'
-	document.querySelector('#button-down').ontouchend = () => mouseDown = null
-	document.querySelector('#button-down').ontouchleave = () => mouseDown = null
-	document.querySelector('#button-down').ontouchcancel = () => mouseDown = null
-	document.querySelector('#button-down').ontouchmove = () => mouseDown = null
+	document.querySelector('#button-left').ontouchstart = () => rotate = 'left'
+	document.querySelector('#button-left').ontouchend = () => rotate = null
+	document.querySelector('#button-left').ontouchleave = () => rotate = null
+	document.querySelector('#button-left').ontouchcancel = () => rotate = null
+	document.querySelector('#button-left').ontouchmove = () => rotate = null
+	document.querySelector('#button-right').ontouchstart = () => rotate = 'right'
+	document.querySelector('#button-right').ontouchend = () => rotate = null
+	document.querySelector('#button-right').ontouchleave = () => rotate = null
+	document.querySelector('#button-right').ontouchcancel = () => rotate = null
+	document.querySelector('#button-right').ontouchmove = () => rotate = null
+	document.querySelector('#button-up').ontouchstart = () => rotate = 'up'
+	document.querySelector('#button-up').ontouchend = () => rotate = null
+	document.querySelector('#button-up').ontouchleave = () => rotate = null
+	document.querySelector('#button-up').ontouchcancel = () => rotate = null
+	document.querySelector('#button-up').ontouchmove = () => rotate = null
+	document.querySelector('#button-down').ontouchstart = () => rotate = 'down'
+	document.querySelector('#button-down').ontouchend = () => rotate = null
+	document.querySelector('#button-down').ontouchleave = () => rotate = null
+	document.querySelector('#button-down').ontouchcancel = () => rotate = null
+	document.querySelector('#button-down').ontouchmove = () => rotate = null
 
 	document.querySelector('#button-fly').ontouchstart = () => flying = true
 	document.querySelector('#button-fly').ontouchend = () => flying = false
@@ -298,6 +291,7 @@ function initControls() {
 }) */
 
 window.onresize = () => resizeScene()
+window.oncontextmenu = () => {return false}
 
 document.body.appendChild(renderer.domElement)
 document.body.appendChild(stats.dom)
@@ -309,10 +303,10 @@ document.onreadystatechange = () => {
 	document.querySelector('#bgm').volume = 0.25
 	initControls()
 }
-/* document.onclick = () => {
+document.onclick = () => {
 	audioAuthorized = true
 	if (!isLocalhost()) document.querySelector('#bgm').play()
-} */
+}
 
 function isLocalhost() {
 	return ['localhost', '127.0.0.1', '192.168.0.110'].includes(location.hostname)
