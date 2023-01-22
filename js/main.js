@@ -36,12 +36,10 @@ const scene = new Scene()
 const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 1, 1000)
 const loader = new GLTFLoader()
 const vector = new Vector3()
-const pointer = {x: 0, y: 0}
 const objects = {}
 const keysPressed = {}
 var mouseDown
 var gamepad
-var bgm
 
 camera.position.z = 10
 scene.background = undefined
@@ -179,14 +177,14 @@ function initControls() {
 	document.querySelector('#menu-button-music-off').onclick = e => {
 		e.preventDefault()
 		musicOff = true
-		bgm.pause()
+		document.querySelector('#bgm').pause()
 		document.querySelector('#menu-button-music-off').classList.add('off')
 		document.querySelector('#menu-button-music-on').classList.remove('off')
 	}
 	document.querySelector('#menu-button-music-on').onclick = e => {
 		e.preventDefault()
 		musicOff = false
-		bgm.play()
+		document.querySelector('#bgm').play()
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
 	}
@@ -241,9 +239,9 @@ function initControls() {
 	document.querySelector('#button-fly').onclick = () => updateGamepad()
 }
 
-window.addEventListener('deviceorientation', e => {
+/* window.addEventListener('deviceorientation', e => {
 	console.log(e)
-})
+}) */
 
 window.onresize = () => resizeScene()
 
@@ -251,13 +249,12 @@ document.body.appendChild(renderer.domElement)
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	particlesJS.load('particles', './js/particles.json')
-	bgm = document.querySelector('#bgm')
-	bgm.volume = 0.25
+	document.querySelector('#bgm').volume = 0.25
 	initControls()
 }
 document.onclick = () => {
 	audioAuthorized = true
-	if (!isLocalhost()) bgm.play()
+	if (!isLocalhost()) document.querySelector('#bgm').play()
 }
 
 function isLocalhost() {

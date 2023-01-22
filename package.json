@@ -2,7 +2,8 @@
 	"name": "webgl",
 	"version": "1.0.0",
 	"scripts": {
-		"serve": "http-server ./ -p 8080 -c-1"
+		"serve": "http-server ./ -p 8080 -c-1",
+		"adb": "adb connect 192.168.0.134:40865"
 	},
 	"devDependencies": {
 		"http-server": "^14.1.1"
