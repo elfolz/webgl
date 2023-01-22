@@ -76,13 +76,9 @@ loader.load(`./models/spaceship.glb`,
 loader.load(`./models/planet.glb`,
 	gltf => {
 		objects[1] = gltf.scene
-		const box = new Box3()
-		box.setFromObject(objects[1])
-		const center = box.getCenter(vector)
-		objects[1].position.x = center.x
-		objects[1].position.y = 40
-		objects[1].position.z = -75
-		objects[1].scale.set(10, 10, 10)
+		objects[1].position.y = 100
+		objects[1].position.z = -250
+		objects[1].scale.set(50, 50, 50)
 		scene.add(objects[1])
 		resizeScene()
 	}, undefined, error => {
@@ -162,8 +158,21 @@ function updateRotation() {
 
 function updateFly() {
 	if (!flying) return
-	objects[0].position.z -= 0.1
-	camera.position.z -= 0.1
+
+	let wDir = camera.getWorldDirection(vector)
+
+	let xMov = (objects[0].rotation.y % Math.PI) * 0.1 / (Math.PI/4)
+	let yMov = (objects[0].rotation.x % Math.PI) * 0.1 / (Math.PI/4)
+
+	/* objects[0].position.x += xMov
+	camera.position.x += xMov */
+
+	objects[0].position.y += yMov
+	camera.position.y += yMov
+
+	objects[0].position.z += 0.1 * wDir.z
+	camera.position.z += 0.1 * wDir.z
+
 }
 
 window.onkeydown = e => {
