@@ -11,26 +11,45 @@ navigator.serviceWorker?.register('service-worker.js').then(reg => {
 	})
 })
 
+const UP = 12
+const LEFT = 14
+const RIGHT = 15
+const DOWN = 13
+const X = 2
+const Y = 3
+const A = 0
+const B = 1
+const RB = 5
+const RT = 7
+const LB = 4
+const LT = 6
+const MENU = 9
+const WIND = 8
+
 var audioAuthorized = false
 var SEPlayeed = false
+var musicOff = false
+var touchControl = true
 
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const scene = new Scene()
-const camera = new PerspectiveCamera(95, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
+const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 1, 1000)
 const loader = new GLTFLoader()
 const vector = new Vector3()
 const pointer = {x: 0, y: 0}
 const objects = {}
 const keysPressed = {}
-var mouseDown = null
+var mouseDown
+var gamepad
+var bgm
 
-camera.position.z = 7.5
+camera.position.z = 10
 scene.background = undefined
 renderer. setClearColor(0xffffff, 0)
 renderer.outputEncoding = sRGBEncoding
-const ambientLight = new AmbientLight( 0xffffff, 0.015 )
-const dirLight = new DirectionalLight( 0xefefff, 1.5 )
-dirLight.position.set(10, 10, 10)
+const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
+const dirLight = new DirectionalLight( 0xFFFFC8, 1.5 )
+dirLight.position.set(10, 10, 0)
 
 scene.add( ambientLight )
 scene.add( dirLight )
@@ -60,8 +79,9 @@ loader.load(`./models/planet.glb`,
 		box.setFromObject(objects[1])
 		const center = box.getCenter(vector)
 		objects[1].position.x += (0 - center.x)
-		objects[1].position.y += (5 - center.y)
-		objects[1].position.z += (0 - center.z)
+		objects[1].position.y = 50
+		objects[1].position.z = -75
+		objects[1].scale.set(10, 10, 10)
 		scene.add(objects[1])
 		resizeScene()
 	}, undefined, error => {
@@ -79,16 +99,8 @@ function animate() {
 	requestAnimationFrame(animate)
 	if (objects[1]) objects[1].rotation.y += 0.001
 	renderer.render(scene, camera)
-	if (mouseDown == 'left') objects[0].rotation.y -= 0.01
-	if (mouseDown == 'right') objects[0].rotation.y += 0.01
-	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
-	if (mouseDown == 'down') objects[0].rotation.x += 0.01
-	if (audioAuthorized && mouseDown && !SEPlayeed) {
-		document.querySelector('#se').play()
-		SEPlayeed = true
-	} else if (document.querySelector('#se').currentTime >= 0.1) {
-		SEPlayeed = false
-	}
+	updateTouchButtons()
+	updateGamepad()
 }
 
 window.onkeydown = e => {
@@ -124,25 +136,76 @@ window.onkeyup = e => {
 	if (document.querySelector('#se').currentTime >= 0.1) SEPlayeed = false
 }
 
-/* renderer.domElement.onmousedown = () => { mouseDown = true }
-renderer.domElement.onmouseup = () => { mouseDown = false }
-renderer.domElement.onmousemove = e => onMove(e)
+function updateTouchButtons() {
+	if (mouseDown == 'left') objects[0].rotation.y -= 0.01
+	if (mouseDown == 'right') objects[0].rotation.y += 0.01
+	if (mouseDown == 'up') objects[0].rotation.x -= 0.01
+	if (mouseDown == 'down') objects[0].rotation.x += 0.01
+	if (audioAuthorized && mouseDown && !SEPlayeed) {
+		document.querySelector('#se').play()
+		SEPlayeed = true
+	} else if (document.querySelector('#se').currentTime >= 0.1) {
+		SEPlayeed = false
+	}
+}
 
-renderer.domElement.ontouchstart = () => { mouseDown = true }
-renderer.domElement.ontouchend = () => { mouseDown = false }
-renderer.domElement.ontouchmove = e => onMove(e)
-
-function onMove(e) {
-	if (!mouseDown) return
-	let deltaX = (e.pageX ?? e.touches[0].pageX) - pointer.x
-	let deltaY = (e.pageY ?? e.touches[0].pageY) - pointer.y
-	pointer.x = (e.pageX ?? e.touches[0].pageX)
-	pointer.y = (e.pageY ?? e.touches[0].pageY)
-	objects[0].rotation.y += Math.sign(deltaX) * 0.025
-	objects[0].rotation.x += Math.sign(deltaY) * 0.025
-} */
+function updateGamepad() {
+	gamepad = navigator.getGamepads().find(el => el?.connected)
+	if (gamepad) {
+		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
+		document.querySelector('#menu-button-gamepad').classList.remove('off')
+		document.querySelector('#menu-button-touch-on').classList.add('off')
+		document.querySelector('#menu-button-touch-off').classList.add('off')
+	} else if (!gamepad && touchControl) {
+		document.querySelectorAll('footer')?.forEach(el => el.classList.remove('hide'))
+	}
+	if (!gamepad) {
+		document.querySelector('#menu-button-gamepad').classList.add('off')
+		document.querySelector('#menu-button-touch-off').classList.remove('off')
+		return
+	}
+	if (gamepad.axes[0] <= -0.5 || gamepad.buttons[LEFT].pressed) mouseDown = 'left'
+	else if (gamepad.axes[0] >= 0.5 || gamepad.buttons[RIGHT].pressed) mouseDown = 'right'
+	else if (gamepad.axes[1] <= -0.5 || gamepad.buttons[UP].pressed) mouseDown = 'up'
+	else if (gamepad.axes[1] >= 0.5 || gamepad.buttons[DOWN].pressed) mouseDown = 'down'
+	else mouseDown = null
+}
 
 function initControls() {
+	document.querySelector('#button-config').onclick = () => {
+		document.querySelector('#menu-config').classList.toggle('opened')
+	}
+
+	document.querySelector('#menu-button-music-off').onclick = e => {
+		e.preventDefault()
+		musicOff = true
+		bgm.pause()
+		document.querySelector('#menu-button-music-off').classList.add('off')
+		document.querySelector('#menu-button-music-on').classList.remove('off')
+	}
+	document.querySelector('#menu-button-music-on').onclick = e => {
+		e.preventDefault()
+		musicOff = false
+		bgm.play()
+		document.querySelector('#menu-button-music-on').classList.add('off')
+		document.querySelector('#menu-button-music-off').classList.remove('off')
+	}
+
+	document.querySelector('#menu-button-touch-on').onclick = e => {
+		e.preventDefault()
+		touchControl = true
+		document.querySelector('#menu-button-touch-on').classList.add('off')
+		document.querySelector('#menu-button-touch-off').classList.remove('off')
+		document.querySelectorAll('footer')?.forEach(el => el.classList.remove('hide'))
+	}
+	document.querySelector('#menu-button-touch-off').onclick = e => {
+		e.preventDefault()
+		touchControl = false
+		document.querySelector('#menu-button-touch-off').classList.add('off')
+		document.querySelector('#menu-button-touch-on').classList.remove('off')
+		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
+	}
+
 	document.querySelector('#button-left').onmousedown = () => mouseDown = 'left'
 	document.querySelector('#button-left').onmouseup = () => mouseDown = null
 	document.querySelector('#button-right').onmousedown = () => mouseDown = 'right'
@@ -152,40 +215,48 @@ function initControls() {
 	document.querySelector('#button-down').onmousedown = () => mouseDown = 'down'
 	document.querySelector('#button-down').onmouseup = () => mouseDown = null
 
-	document.querySelector('#button-fly').onmousedown = () => alert('Em breve!')
+	document.querySelector('#button-fly').onmousedown = () => updateGamepad()
 
 	document.querySelector('#button-left').ontouchstart = () => mouseDown = 'left'
 	document.querySelector('#button-left').outouchend = () => mouseDown = null
 	document.querySelector('#button-left').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-left').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-left').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-right').ontouchstart = () => mouseDown = 'right'
 	document.querySelector('#button-right').outouchend = () => mouseDown = null
 	document.querySelector('#button-right').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-right').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-right').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-up').ontouchstart = () => mouseDown = 'up'
 	document.querySelector('#button-up').outouchend = () => mouseDown = null
 	document.querySelector('#button-up').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-up').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-up').ontouchmove = () => mouseDown = null
 	document.querySelector('#button-down').ontouchstart = () => mouseDown = 'down'
 	document.querySelector('#button-down').outouchend = () => mouseDown = null
 	document.querySelector('#button-down').ontouchleave = () => mouseDown = null
 	document.querySelector('#button-down').ontouchcancel = () => mouseDown = null
+	document.querySelector('#button-down').ontouchmove = () => mouseDown = null
 
-	document.querySelector('#button-fly').ontouchstart = () => alert('Em breve!')
+	document.querySelector('#button-fly').onclick = () => updateGamepad()
 }
+
+window.addEventListener('deviceorientation', e => {
+	console.log(e)
+})
 
 window.onresize = () => resizeScene()
 
 document.body.appendChild(renderer.domElement)
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
-	particlesJS.load('particles-js', './js/particles.json')
+	particlesJS.load('particles', './js/particles.json')
+	bgm = document.querySelector('#bgm')
+	bgm.volume = 0.25
 	initControls()
 }
 document.onclick = () => {
 	audioAuthorized = true
-	const bgm = document.querySelector('#bgm')
-	bgm.volume = 0.25
 	if (!isLocalhost()) bgm.play()
 }
 
