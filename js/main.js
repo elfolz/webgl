@@ -315,8 +315,53 @@ function initControls() {
 	document.querySelector('#button-fly').ontouchend = () => flying = false
 }
 
+var oldRotate
 window.addEventListener('deviceorientation', e => {
-	console.log(e.alpha, e.beta, e.gamma)
+	console.log(`a ${e.alpha} - b ${e.beta} - g ${e.gamma}`)
+	if (e.alpha < 160) {
+		if (e.beta < 25) {
+			rotate = 'up'
+		} else if (e.beta > 80) {
+			rotate = 'down'
+		} else if (e.gamma < -20) {
+			rotate = 'left'
+		} else if (e.gamma > 20) {
+			rotate = 'right'
+		} else {
+			rotate = null
+		}
+	} else if (e.alpha > 340) {
+		/* if (e.gamma < -20) {
+			rotate = 'left'
+		} else if (e.gamma > 20) {
+			rotate = 'right'
+		} else if (e.beta > 0 && e.beta < 45) {
+			rotate = 'up'
+		} else if (e.beta > 90) {
+			rotate = 'down'
+		} else {
+			rotate = null
+		} */
+	} else {
+		rotate = null
+	}
+	if (rotate) {
+		document.querySelector(`#button-${rotate}`).classList.add('active')
+		if (oldRotate && oldRotate != rotate) document.querySelector(`#button-${oldRotate}`).classList.remove('active')
+		oldRotate = rotate
+	} else if (oldRotate) {
+		document.querySelector(`#button-${oldRotate}`).classList.remove('active')
+		oldRotate = undefined
+	}
+
+	// deitado = alpha 180 / 360
+	// normal = beta 45 ~ 60
+
+	// esquerda gama -
+	// direita gama +
+	// frente beta -
+	// frente beta +
+
 })
 
 window.onresize = () => resizeScene()
