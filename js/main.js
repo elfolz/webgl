@@ -318,10 +318,12 @@ function initControls() {
 var oldRotate
 window.addEventListener('deviceorientation', e => {
 	console.log(`a ${e.alpha} - b ${e.beta} - g ${e.gamma}`)
-	if (e.alpha < 160) {
+	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
+		rotate = null
+	} else if (e.alpha < 160) {
 		if (e.beta < 25) {
 			rotate = 'up'
-		} else if (e.beta > 80) {
+		} else if (e.beta > 70) {
 			rotate = 'down'
 		} else if (e.gamma < -20) {
 			rotate = 'left'
@@ -330,18 +332,30 @@ window.addEventListener('deviceorientation', e => {
 		} else {
 			rotate = null
 		}
-	} else if (e.alpha > 340) {
-		/* if (e.gamma < -20) {
-			rotate = 'left'
-		} else if (e.gamma > 20) {
-			rotate = 'right'
-		} else if (e.beta > 0 && e.beta < 45) {
+	} else if (e.alpha >= 340) {
+		if (e.gamma < 20) {
 			rotate = 'up'
-		} else if (e.beta > 90) {
+		} else if (e.gamma > 50) {
 			rotate = 'down'
+		} else if (e.beta > 20) {
+			rotate = 'left'
+		} else if (e.beta < -20) {
+			rotate = 'right'
 		} else {
 			rotate = null
-		} */
+		}
+	} else if (e.alpha >= 160) {
+		if (e.gamma < -10) {
+			rotate = 'up'
+		} else if (e.gamma > -40) {
+			rotate = 'down'
+		} else if (e.beta < -20) {
+			rotate = 'left'
+		} else if (e.beta > 20) {
+			rotate = 'right'
+		} else {
+			rotate = null
+		}
 	} else {
 		rotate = null
 	}
