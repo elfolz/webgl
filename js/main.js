@@ -157,15 +157,14 @@ function updateRotation() {
 
 function updateFly() {
 
-	let music = document.querySelector('#fly')
-
+	let audio = document.querySelector('#fly')
 	if (flying) {
 		document.querySelector('#rays').classList.add('show')
-		if (music.currentTime <= 0) music.play()
+		if (audio.currentTime <= 0) audio.play()
 	} else {
 		document.querySelector('#rays').classList.remove('show')
-		music.pause()
-		music.currentTime = 0
+		audio.pause()
+		audio.currentTime = 0
 		return
 	}
 
@@ -316,9 +315,22 @@ stats.begin()
 
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
+	initControls()
 	particlesJS.load('particles', './js/particles.json')
 	document.querySelector('#bgm').volume = 0.25
-	initControls()
+	document.querySelector('header').style.removeProperty('display')
+	document.querySelectorAll('footer').forEach(el => el.style.removeProperty('display'))
+	if (isPC()) {
+		document.querySelector('#icon-rocket').style.setProperty('display', 'none')
+		document.querySelectorAll('footer:first-of-type section button').forEach(el => {
+			el.querySelector('svg').style.setProperty('display', 'none')
+		})
+	} else {
+		document.querySelector('#icon-spacebar').style.setProperty('display', 'none')
+		document.querySelectorAll('footer:first-of-type section button').forEach(el => {
+			el.querySelector('label').style.setProperty('display', 'none')
+		})
+	}
 }
 document.onclick = () => {
 	if (!audioAuthorized) {
@@ -329,6 +341,10 @@ document.onclick = () => {
 
 function isLocalhost() {
 	return ['localhost', '127.0.0.1', '192.168.0.110'].includes(location.hostname)
+}
+
+function isPC() {
+	return /(windows|macintosh)/i.test(navigator.userAgent)
 }
 
 animate()

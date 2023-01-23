@@ -152,6 +152,10 @@ footer section button:last-of-type {
 	left: 50%;
 	transform: translateX(-50%);
 }
+footer section label {
+	color: var(--color-button);
+	font-size: 28px;
+}
 #light {
 	position: fixed;
 	top: 0;
@@ -164,10 +168,10 @@ footer section button:last-of-type {
 }
 #rays {
 	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	top: -50%;
+	left: -50%;
+	right: -50%;
+	bottom: -50%;
 	background: repeating-conic-gradient(rgba(255, 255, 255,0.05) 0 9deg, rgba(0,0,0,0.1) 9deg 18deg);
 	opacity: 0;
 	z-index: -1;
@@ -175,6 +179,7 @@ footer section button:last-of-type {
 }
 #rays.show {
 	opacity: 1;
+	animation: rotate 10s linear infinite;
 }
 #particles {
 	position: absolute;
@@ -183,4 +188,12 @@ footer section button:last-of-type {
 	right: 0;
 	bottom: 0;
 	z-index: -2;
+}
+@keyframes rotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
