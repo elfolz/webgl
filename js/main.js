@@ -29,22 +29,22 @@ const LT = 6
 const MENU = 9
 const WIND = 8
 
-var audioAuthorized = false
-var touchControl = true
-
 const clock = new Clock()
 const stats = new Stats()
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
-const scene = new Scene()
 const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
+const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
+const dirLight = new DirectionalLight( 0xFFFFC8, 1.5 )
 const loader = new GLTFLoader()
 const vector = new Vector3()
+const scene = new Scene()
 const audio = new Audio()
 const audioContext = new AudioContext()
 const audioGain = audioContext.createGain()
 const destination = audioContext.createMediaStreamDestination()
 const objects = {}
 const keysPressed = {}
+
 var rotate
 var lastDirection
 var gamepad
@@ -54,11 +54,20 @@ var flying = false
 var clockDelta = 0
 var fpsLimit = 1 / 60
 var flyingAudio
-
+var audioAuthorized = false
+var touchControl = true
 var bgmSource
+
 audioGain.connect(audioContext.destination)
 audioGain.gain.value = 0.25
 audio.srcObject = destination.stream
+
+scene.background = undefined
+renderer.outputEncoding = sRGBEncoding
+dirLight.position.set(10, 10, 0)
+renderer. setClearColor(0xffffff, 0)
+scene.add( ambientLight )
+scene.add( dirLight )
 
 var bgmBuffer
 fetch('../audio/bgm.mp3')
@@ -94,16 +103,6 @@ fetch('../audio/fly.mp3')
 		})
 	})
 })
-
-scene.background = undefined
-renderer. setClearColor(0xffffff, 0)
-renderer.outputEncoding = sRGBEncoding
-const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
-const dirLight = new DirectionalLight( 0xFFFFC8, 1.5 )
-dirLight.position.set(10, 10, 0)
-
-scene.add( ambientLight )
-scene.add( dirLight )
 
 loader.load(`./models/spaceship.glb`,
 	gltf => {
@@ -240,43 +239,25 @@ window.onkeydown = e => {
 		document.querySelector('#button-fly').classList.add('active')
 		flying = true
 	}
-	if (keysPressed[65]) {
-		document.querySelector('#button-left').classList.add('active')
-		rotate = 'left'
-	}
-	if (keysPressed[68]) {
-		document.querySelector('#button-right').classList.add('active')
-		rotate = 'right'
-	}
-	if (keysPressed[87]) {
-		document.querySelector('#button-up').classList.add('active')
-		rotate = 'up'
-	}
-	if (keysPressed[83]) {
-		document.querySelector('#button-down').classList.add('active')
-		rotate = 'down'
-	}
+	if (keysPressed[65]) rotate = 'left'
+	if (keysPressed[68]) rotate = 'right'
+	if (keysPressed[87]) rotate = 'up'
+	if (keysPressed[83]) rotate = 'down'
+	if (rotate) document.querySelector(`#button-${rotate}`).classList.add('active')
 }
 window.onkeyup = e => {
 	keysPressed[e.keyCode] = false
+	let button
 	if (e.keyCode == 32) {
-		document.querySelector('#button-fly').classList.remove('active')
+		button = '#button-fly'
 		flying = false
 	}
-	if (e.keyCode == 65) {
-		document.querySelector('#button-left').classList.remove('active')
-		rotate = null
-	}
-	if (e.keyCode == 68) {
-		document.querySelector('#button-right').classList.remove('active')
-		rotate = null
-	}
-	if (e.keyCode == 87) {
-		document.querySelector('#button-up').classList.remove('active')
-		rotate = null
-	}
-	if (e.keyCode == 83) {
-		document.querySelector('#button-down').classList.remove('active')
+	if (e.keyCode == 65) button = '#button-left'
+	if (e.keyCode == 68) button = '#button-right'
+	if (e.keyCode == 87) button = '#button-up'
+	if (e.keyCode == 83) button = '#button-down'
+	if (button) {
+		document.querySelector(button).classList.remove('active')
 		rotate = null
 	}
 }
