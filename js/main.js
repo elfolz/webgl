@@ -1,6 +1,6 @@
-import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3, BufferGeometryLoader} from './three.module.js'
+import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
-import Stats from './stats.module.js'
+/* import Stats from './stats.module.js' */
 
 if (!isLocalhost()) {
 	navigator.serviceWorker?.register('service-worker.js').then(reg => {
@@ -30,7 +30,7 @@ const MENU = 9
 const WIND = 8
 
 const clock = new Clock()
-const stats = new Stats()
+/* const stats = new Stats() */
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
 const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
@@ -146,7 +146,7 @@ function animate() {
 	updateRotation()
 	updateGamepad()
 	updateFly()
-	stats.update()
+	/* stats.update() */
 	clockDelta = clockDelta % fpsLimit
 }
 
@@ -323,14 +323,15 @@ window.onresize = () => resizeScene()
 window.oncontextmenu = () => {return isLocalhost()}
 
 document.body.appendChild(renderer.domElement)
-document.body.appendChild(stats.dom)
-stats.begin()
+/* document.body.appendChild(stats.dom)
+stats.begin() */
 
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	initControls()
 	particlesJS.load('particles', './js/particles.json')
 	document.querySelector('header').style.removeProperty('display')
+	document.querySelector('#rays').style.removeProperty('display')
 	document.querySelectorAll('footer').forEach(el => el.style.removeProperty('display'))
 	if (isPC()) {
 		document.querySelector('#icon-rocket').style.setProperty('display', 'none')
