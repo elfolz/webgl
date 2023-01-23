@@ -1,4 +1,4 @@
-import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3} from './three.module.js'
+import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Box3, Vector3, BufferGeometryLoader} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
 import Stats from './stats.module.js'
 
@@ -39,6 +39,10 @@ const scene = new Scene()
 const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
 const loader = new GLTFLoader()
 const vector = new Vector3()
+const audio = new Audio()
+const audioContext = new AudioContext()
+const audioGain = audioContext.createGain()
+const destination = audioContext.createMediaStreamDestination()
 const objects = {}
 const keysPressed = {}
 var rotate
@@ -49,6 +53,47 @@ var revertFloat = false
 var flying = false
 var clockDelta = 0
 var fpsLimit = 1 / 60
+var flyingAudio
+
+var bgmSource
+audioGain.connect(audioContext.destination)
+audioGain.gain.value = 0.25
+audio.srcObject = destination.stream
+
+var bgmBuffer
+fetch('../audio/bgm.mp3')
+.then(response => {
+	response.arrayBuffer()
+	.then(buffer => {
+		audioContext.decodeAudioData(buffer)
+		.then(audioData => {
+			bgmBuffer = audioData
+			if (audioAuthorized) playBGM()
+		})
+	})
+})
+var seTurnBuffer
+fetch('../audio/turn.mp3')
+.then(response => {
+	response.arrayBuffer()
+	.then(buffer => {
+		audioContext.decodeAudioData(buffer)
+		.then(audioData => {
+			seTurnBuffer = audioData
+		})
+	})
+})
+var seFlyBuffer
+fetch('../audio/fly.mp3')
+.then(response => {
+	response.arrayBuffer()
+	.then(buffer => {
+		audioContext.decodeAudioData(buffer)
+		.then(audioData => {
+			seFlyBuffer = audioData
+		})
+	})
+})
 
 scene.background = undefined
 renderer. setClearColor(0xffffff, 0)
@@ -150,21 +195,21 @@ function updateRotation() {
 	if (rotate == 'up') objects[0].rotation.x -= 0.01
 	if (rotate == 'down') objects[0].rotation.x += 0.01
 	if (audioAuthorized && rotate && lastDirection != rotate) {
-		document.querySelector('#se').play()
+		playSE(seTurnBuffer)
 	}
 	lastDirection = rotate
 }
 
 function updateFly() {
-
-	let audio = document.querySelector('#fly')
 	if (flying) {
 		document.querySelector('#rays').classList.add('show')
-		if (audio.currentTime <= 0) audio.play()
+		if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
 	} else {
 		document.querySelector('#rays').classList.remove('show')
-		audio.pause()
-		audio.currentTime = 0
+		if (flyingAudio) {
+			flyingAudio.stop()
+			flyingAudio = undefined
+		}
 		return
 	}
 
@@ -238,13 +283,13 @@ function initControls() {
 	}
 	document.querySelector('#menu-button-music-off').onclick = e => {
 		e.preventDefault()
-		document.querySelector('#bgm').pause()
+		if (bgmSource) bgmSource.stop()
 		document.querySelector('#menu-button-music-off').classList.add('off')
 		document.querySelector('#menu-button-music-on').classList.remove('off')
 	}
 	document.querySelector('#menu-button-music-on').onclick = e => {
 		e.preventDefault()
-		document.querySelector('#bgm').play()
+		playBGM()
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
 	}
@@ -270,36 +315,19 @@ function initControls() {
 	document.querySelector('#button-up').onmouseup = () => rotate = null
 	document.querySelector('#button-down').onmousedown = () => rotate = 'down'
 	document.querySelector('#button-down').onmouseup = () => rotate = null
-
 	document.querySelector('#button-fly').onmousedown = () => flying = true
 	document.querySelector('#button-fly').onmouseup = () => flying = false
 
 	document.querySelector('#button-left').ontouchstart = () => rotate = 'left'
 	document.querySelector('#button-left').ontouchend = () => rotate = null
-	document.querySelector('#button-left').ontouchleave = () => rotate = null
-	document.querySelector('#button-left').ontouchcancel = () => rotate = null
-	document.querySelector('#button-left').ontouchmove = () => rotate = null
 	document.querySelector('#button-right').ontouchstart = () => rotate = 'right'
 	document.querySelector('#button-right').ontouchend = () => rotate = null
-	document.querySelector('#button-right').ontouchleave = () => rotate = null
-	document.querySelector('#button-right').ontouchcancel = () => rotate = null
-	document.querySelector('#button-right').ontouchmove = () => rotate = null
 	document.querySelector('#button-up').ontouchstart = () => rotate = 'up'
 	document.querySelector('#button-up').ontouchend = () => rotate = null
-	document.querySelector('#button-up').ontouchleave = () => rotate = null
-	document.querySelector('#button-up').ontouchcancel = () => rotate = null
-	document.querySelector('#button-up').ontouchmove = () => rotate = null
 	document.querySelector('#button-down').ontouchstart = () => rotate = 'down'
 	document.querySelector('#button-down').ontouchend = () => rotate = null
-	document.querySelector('#button-down').ontouchleave = () => rotate = null
-	document.querySelector('#button-down').ontouchcancel = () => rotate = null
-	document.querySelector('#button-down').ontouchmove = () => rotate = null
-
 	document.querySelector('#button-fly').ontouchstart = () => flying = true
 	document.querySelector('#button-fly').ontouchend = () => flying = false
-	document.querySelector('#button-fly').ontouchleave = () => flying = false
-	document.querySelector('#button-fly').ontouchcancel = () => flying = false
-	document.querySelector('#button-fly').ontouchmove = () => flying = false
 }
 
 /* window.addEventListener('deviceorientation', e => {
@@ -317,7 +345,6 @@ document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	initControls()
 	particlesJS.load('particles', './js/particles.json')
-	document.querySelector('#bgm').volume = 0.25
 	document.querySelector('header').style.removeProperty('display')
 	document.querySelectorAll('footer').forEach(el => el.style.removeProperty('display'))
 	if (isPC()) {
@@ -334,9 +361,34 @@ document.onreadystatechange = () => {
 }
 document.onclick = () => {
 	if (!audioAuthorized) {
-		if (!isLocalhost()) document.querySelector('#bgm').play()
+		if (bgmBuffer) playBGM()
+		audio.play()
 		audioAuthorized = true
 	}
+}
+
+function playBGM(startTime=0) {
+	if (!bgmBuffer) return
+	bgmSource = audioContext.createBufferSource()
+	bgmSource.buffer = bgmBuffer
+	bgmSource.loop = true
+	bgmSource.connect(audioGain)
+	bgmSource.start(startTime)
+	bgmSource.onended = () => {
+		bgmSource.disconnect()
+		bgmSource = undefined
+	}
+}
+
+function playSE(buffer, loop=false) {
+	if (!buffer) return
+	let src = audioContext.createBufferSource()
+	src.buffer = buffer
+	src.loop = loop
+	src.connect(audioContext.destination)
+	src.start(0)
+	src.onended = () => src.disconnect()
+	return src
 }
 
 function isLocalhost() {
