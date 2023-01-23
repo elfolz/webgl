@@ -3,8 +3,8 @@
 	"version": "1.0.0",
 	"scripts": {
 		"serve": "http-server ./ -p 8080 -c-1",
-		"adb:c": "adb connect 192.168.0.134:40865",
-		"adb:d": "adb disconnect 192.168.0.134:40865"
+		"adb:c": "adb connect 192.168.0.134:40531",
+		"adb:d": "adb disconnect 192.168.0.134:40531"
 	},
 	"devDependencies": {
 		"http-server": "^14.1.1"

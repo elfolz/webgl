@@ -315,9 +315,9 @@ function initControls() {
 	document.querySelector('#button-fly').ontouchend = () => flying = false
 }
 
-/* window.addEventListener('deviceorientation', e => {
-	console.log(e)
-}) */
+window.addEventListener('deviceorientation', e => {
+	console.log(e.alpha, e.beta, e.gamma)
+})
 
 window.onresize = () => resizeScene()
 window.oncontextmenu = () => {return isLocalhost()}
