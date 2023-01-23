@@ -68,7 +68,7 @@ fetch('../audio/bgm.mp3')
 		audioContext.decodeAudioData(buffer)
 		.then(audioData => {
 			bgmBuffer = audioData
-			if (audioAuthorized) playBGM()
+			if (audioAuthorized && !isLocalhost()) playBGM()
 		})
 	})
 })
@@ -224,6 +224,10 @@ function updateFly() {
 	objects[0].position.y += yMov
 	camera.position.y += yMov
 
+	let angle = Math.min(yMov*10000, document.documentElement.clientHeight)
+
+	document.querySelector('#rays').style.setProperty('top', `calc(-100% - ${angle}px)`)
+
 	objects[0].position.z += 0.1 * wDir.z
 	camera.position.z += 0.1 * wDir.z
 
@@ -361,7 +365,7 @@ document.onreadystatechange = () => {
 }
 document.onclick = () => {
 	if (!audioAuthorized) {
-		if (bgmBuffer) playBGM()
+		if (bgmBuffer && !isLocalhost()) playBGM()
 		audio.play()
 		audioAuthorized = true
 	}
