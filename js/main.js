@@ -1,5 +1,5 @@
 import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3} from './three.module.js'
-import { GLTFLoader } from './GLTFLoader.js'
+import { GLTFLoader } from './gltfLoader.module.js'
 
 const UP = 12
 const LEFT = 14
