@@ -31,12 +31,12 @@ const objects = {}
 const keysPressed = {}
 
 var frames = 0
-var fps = 0
 var fpsLimit = 1 / 60
 var touching = false
 var rotate
 var lastDirection
 var gamepad
+var gamepadVibrating = false
 var floatY = 0
 var revertFloat = false
 var flying = false
@@ -95,8 +95,8 @@ function resizeScene() {
 
 function animate() {
 	requestAnimationFrame(animate)
-	clockDelta += clock.getDelta()
 	if (document.hidden) return
+	if (fpsLimit) clockDelta += clock.getDelta()
 	if (fpsLimit && clockDelta < fpsLimit) return
 	renderer.render(scene, camera)
 	updateFPSCounter()
@@ -104,13 +104,13 @@ function animate() {
 	updateRotation()
 	updateGamepad()
 	updateFly()
-	fpsLimit ? clockDelta = clockDelta % fpsLimit : clockDelta = clockDelta
+	if (fpsLimit) clockDelta = clockDelta % fpsLimit
 }
 
 function updateFPSCounter() {
 	frames++
 	if (performance.now() < lastFrameTime + 1000) return
-	fps = Math.round(( frames * 1000 ) / ( performance.now() - lastFrameTime ))
+	let fps = Math.round(( frames * 1000 ) / ( performance.now() - lastFrameTime ))
 	if (!Number.isNaN(fps)) {
 		let ctx = document.querySelector('#fps').getContext('2d')
 		ctx.font = 'bold 20px sans-serif'
@@ -142,6 +142,7 @@ function updateObjectsAnimations() {
 function updateGamepad() {
 	gamepad = navigator.getGamepads().find(el => el?.connected)
 	if (gamepad) {
+		if (!audioAuthorized && gamepad.buttons.some(el => el.pressed)) initAudio()
 		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
 		document.querySelector('#menu-button-gamepad').classList.remove('off')
 		document.querySelector('#menu-button-touch-on').classList.add('off')
@@ -162,6 +163,7 @@ function updateGamepad() {
 	else if (gamepad.axes[1] >= 0.5 || gamepad.buttons[DOWN].pressed) rotate = 'down'
 	else rotate = null
 	flying = gamepad.buttons[A].pressed
+	if (flying && !gamepadVibrating) vibrateGamepad()
 }
 
 function updateRotation() {
@@ -169,22 +171,40 @@ function updateRotation() {
 	if (rotate == 'right') objects[0].rotation.y += 0.01
 	if (rotate == 'up') objects[0].rotation.x -= 0.01
 	if (rotate == 'down') objects[0].rotation.x += 0.01
-	if (audioAuthorized && rotate && lastDirection != rotate) {
-		playSE(seTurnBuffer)
+	if (rotate && lastDirection != rotate) {
+		if (audioAuthorized) playSE(seTurnBuffer)
 	}
 	lastDirection = rotate
 }
 
+function vibrateGamepad() {
+	if (!gamepad) return
+	gamepadVibrating = true
+	gamepad.vibrationActuator.playEffect(gamepad.vibrationActuator.type, {
+		startDelay: 0,
+		duration: 0.1,
+		weakMagnitude: 0.1,
+		strongMagnitude: 0.25,
+	})
+	.then(() => {
+		if (flying) vibrateGamepad()
+	})
+	.finally(() => {
+		if (!flying) gamepadVibrating = false
+	})
+}
+
+var lastVibration = 0
 function updateFly() {
 	if (flying) {
 		if (collide(objects[0], objects[1])) {
 			document.querySelector('#rays').classList.remove('show')
 			if (flyingAudio) flyingAudio.stop()
 			flyingAudio = undefined
-			return
+		} else {
+			document.querySelector('#rays').classList.add('show')
+			if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
 		}
-		document.querySelector('#rays').classList.add('show')
-		if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
 	} else {
 		document.querySelector('#rays').classList.remove('show')
 		if (flyingAudio) {
@@ -204,6 +224,12 @@ function updateFly() {
 	document.querySelector('#rays').style.setProperty('top', `calc(-100% - ${angle}px)`)
 	objects[0].position.z += 0.1 * wDir.z
 	camera.position.z += 0.1 * wDir.z
+
+	if (!isPC() && !gamepad && performance.now() > lastVibration + 100) {
+		try {navigator.vibrate(50)} catch(e){}
+		lastVibration = performance.now()
+	}
+
 }
 
 function getVertices(obj) {
