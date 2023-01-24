@@ -317,7 +317,9 @@ function initControls() {
 
 var oldRotate
 window.ondeviceorientation = e => {
-	if (screen.orientation.angle >= 270) {
+	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
+		rotate = null
+	} else if (screen.orientation.angle >= 270) {
 		if (e.gamma < 20) rotate = 'up'
 		else if (e.gamma > 40) rotate = 'down'
 		else if (e.beta > 10) rotate = 'left'
