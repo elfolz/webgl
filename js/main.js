@@ -55,7 +55,8 @@ var clockDelta = 0
 var fpsLimit = 1 / 60
 var flyingAudio
 var audioAuthorized = false
-var touchControl = true
+var touchControl = !(localStorage.getItem('touch') == 'false')
+var gyroscope = !isPC() && !(localStorage.getItem('gyroscope') == 'false')
 var bgmSource
 
 audioGain.connect(audioContext.destination)
@@ -77,7 +78,7 @@ fetch('../audio/bgm.mp3')
 		audioContext.decodeAudioData(buffer)
 		.then(audioData => {
 			bgmBuffer = audioData
-			if (audioAuthorized && !isLocalhost()) playBGM()
+			if (audioAuthorized) playBGM()
 		})
 	})
 })
@@ -176,8 +177,10 @@ function updateGamepad() {
 		document.querySelectorAll('footer')?.forEach(el => el.classList.remove('hide'))
 	}
 	if (!gamepad) {
-		document.querySelector('#menu-button-gamepad').classList.add('off')
-		document.querySelector('#menu-button-touch-off').classList.remove('off')
+		if (touchControl) {
+			document.querySelector('#menu-button-gamepad').classList.add('off')
+			document.querySelector('#menu-button-touch-off').classList.remove('off')
+		}
 		return
 	}
 	if (gamepad.axes[0] <= -0.5 || gamepad.buttons[LEFT].pressed) rotate = 'left'
@@ -268,30 +271,55 @@ function initControls() {
 	}
 	document.querySelector('#menu-button-music-off').onclick = e => {
 		e.preventDefault()
-		if (bgmSource) bgmSource.stop()
+		localStorage.setItem('bgm', 'false')
 		document.querySelector('#menu-button-music-off').classList.add('off')
 		document.querySelector('#menu-button-music-on').classList.remove('off')
+		if (bgmSource) bgmSource.stop()
 	}
 	document.querySelector('#menu-button-music-on').onclick = e => {
 		e.preventDefault()
-		playBGM()
+		localStorage.setItem('bgm', 'true')
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
-	}
-	document.querySelector('#menu-button-touch-on').onclick = e => {
-		e.preventDefault()
-		touchControl = true
-		document.querySelector('#menu-button-touch-on').classList.add('off')
-		document.querySelector('#menu-button-touch-off').classList.remove('off')
-		document.querySelectorAll('footer')?.forEach(el => el.classList.remove('hide'))
+		playBGM()
 	}
 	document.querySelector('#menu-button-touch-off').onclick = e => {
 		e.preventDefault()
 		touchControl = false
+		localStorage.setItem('touch', 'false')
 		document.querySelector('#menu-button-touch-off').classList.add('off')
 		document.querySelector('#menu-button-touch-on').classList.remove('off')
 		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
 	}
+	document.querySelector('#menu-button-touch-on').onclick = e => {
+		e.preventDefault()
+		touchControl = true
+		localStorage.setItem('touch', 'true')
+		document.querySelector('#menu-button-touch-on').classList.add('off')
+		document.querySelector('#menu-button-touch-off').classList.remove('off')
+		document.querySelectorAll('footer')?.forEach(el => el.classList.remove('hide'))
+	}
+
+	if (isPC()) {
+		document.querySelector('#menu-button-gyro-on').classList.add('off')
+		document.querySelector('#menu-button-gyro-off').classList.add('off')
+	}
+	document.querySelector('#menu-button-gyro-off').onclick = e => {
+		e.preventDefault()
+		gyroscope = false
+		rotate = null
+		localStorage.setItem('gyroscope', 'false')
+		document.querySelector('#menu-button-gyro-off').classList.add('off')
+		document.querySelector('#menu-button-gyro-on').classList.remove('off')
+	}
+	document.querySelector('#menu-button-gyro-on').onclick = e => {
+		e.preventDefault()
+		gyroscope = true
+		localStorage.setItem('gyroscope', 'true')
+		document.querySelector('#menu-button-gyro-on').classList.add('off')
+		document.querySelector('#menu-button-gyro-off').classList.remove('off')
+	}
+
 	document.querySelector('#button-left').onmousedown = () => rotate = 'left'
 	document.querySelector('#button-left').onmouseup = () => rotate = null
 	document.querySelector('#button-right').onmousedown = () => rotate = 'right'
@@ -317,6 +345,7 @@ function initControls() {
 
 var oldRotate
 window.ondeviceorientation = e => {
+	if (!gyroscope) return
 	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
 		rotate = null
 	} else if (screen.orientation.angle >= 270) {
@@ -361,12 +390,25 @@ document.onreadystatechange = () => {
 	document.querySelector('header').style.removeProperty('display')
 	document.querySelector('#rays').style.removeProperty('display')
 	document.querySelectorAll('footer').forEach(el => el.style.removeProperty('display'))
+	if (localStorage.getItem('bgm') == 'false') {
+		document.querySelector('#menu-button-music-on').classList.remove('off')
+		document.querySelector('#menu-button-music-off').classList.add('off')
+	}
+	if (localStorage.getItem('touch') == 'false') {
+		document.querySelector('#menu-button-touch-on').classList.remove('off')
+		document.querySelector('#menu-button-touch-off').classList.add('off')
+		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
+	}
 	if (isPC()) {
 		document.querySelector('#icon-rocket').style.setProperty('display', 'none')
 		document.querySelectorAll('footer:first-of-type section button').forEach(el => {
 			el.querySelector('svg').style.setProperty('display', 'none')
 		})
 	} else {
+		if (localStorage.getItem('gyroscope') == 'false') {
+			document.querySelector('#menu-button-gyro-on').classList.remove('off')
+			document.querySelector('#menu-button-gyro-off').classList.add('off')
+		}
 		document.querySelector('#icon-spacebar').style.setProperty('display', 'none')
 		document.querySelectorAll('footer:first-of-type section button').forEach(el => {
 			el.querySelector('label').style.setProperty('display', 'none')
@@ -375,14 +417,14 @@ document.onreadystatechange = () => {
 }
 document.onclick = () => {
 	if (!audioAuthorized) {
-		if (bgmBuffer && !isLocalhost()) playBGM()
+		if (bgmBuffer) playBGM()
 		audio.play()
 		audioAuthorized = true
 	}
 }
 
 function playBGM(startTime=0) {
-	if (!bgmBuffer) return
+	if (!bgmBuffer || localStorage.getItem('bgm') == 'false') return
 	bgmSource = audioContext.createBufferSource()
 	bgmSource.buffer = bgmBuffer
 	bgmSource.loop = true

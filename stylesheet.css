@@ -52,7 +52,7 @@ header {
 }
 header section {
 	position: absolute;
-	top: calc(56px + env(safe-area-inset-top, 0));
+	top: env(safe-area-inset-top, 0);
 	left: 12px;
 	width: fit-content;
 	background-color: var(--color-button);
@@ -60,13 +60,14 @@ header section {
 	padding: 6px 12px;
 	transition: all 250ms ease-in-out;
 	opacity: 0;
-	height: 0;
+	transform: scaleY(0);
 	overflow: hidden;
 	box-shadow: 4px 4px 8px rgba(0,0,0,0.25);
 }
 header section.opened {
 	opacity: 1;
-	height: 92px;
+	top: calc(56px + env(safe-area-inset-top, 0));
+	transform: scaleY(1);
 }
 header section span {
 	display: flex;
