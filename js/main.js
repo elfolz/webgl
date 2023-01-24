@@ -103,6 +103,7 @@ loader.load(`./models/spaceship.glb`,
 		objects[0].position.y = -3
 		objects[0].position.z = -10
 		objects[0].rotation.y = Math.PI
+		objects[0].vertices = getVertices(objects[0])
 		scene.add(objects[0])
 	}, undefined, error => {
 		console.log(error)
@@ -115,6 +116,7 @@ loader.load(`./models/planet.glb`,
 		objects[1].position.y = 100
 		objects[1].position.z = -250
 		objects[1].scale.set(50, 50, 50)
+		objects[1].vertices = getVertices(objects[1])
 		scene.add(objects[1])
 	}, undefined, error => {
 		console.log(error)
@@ -253,9 +255,8 @@ function getVertices(obj) {
 	return vertices
 }
 function colisionCheck(a, b) {
-	let vertexes = getVertices(a)
-	for (let v of vertexes) {
-		for (var vertexIndex = 0; vertexIndex < vertexes.length; vertexIndex++) {
+	for (let v of a.vertices) {
+		for (var vertexIndex = 0; vertexIndex < v.length; vertexIndex++) {
 			let localVertex = new Vector3().fromBufferAttribute(v, vertexIndex).clone()
 			let globalVertex = localVertex.applyMatrix4(a.matrix)
 			let directionVector = globalVertex.sub(a.position)
