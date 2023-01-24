@@ -321,7 +321,7 @@ window.addEventListener('deviceorientation', e => {
 	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
 		rotate = null
 	} else if (e.alpha < 160) {
-		if (e.beta < 25) {
+		if (e.beta < 20) {
 			rotate = 'up'
 		} else if (e.beta > 70) {
 			rotate = 'down'
@@ -333,25 +333,25 @@ window.addEventListener('deviceorientation', e => {
 			rotate = null
 		}
 	} else if (e.alpha >= 340) {
-		if (e.gamma < 20) {
+		if (e.gamma < 20 && e.beta < 20 & e.beta > -20) {
 			rotate = 'up'
-		} else if (e.gamma > 50) {
+		} else if (e.gamma > 40 && e.beta < 20 & e.beta > -20) {
 			rotate = 'down'
-		} else if (e.beta > 20) {
+		} else if (e.beta > 20 && e.gamma > 20 && e.gamma < 40) {
 			rotate = 'left'
-		} else if (e.beta < -20) {
+		} else if (e.beta < -20 && e.gamma > 20 && e.gamma < 40) {
 			rotate = 'right'
 		} else {
 			rotate = null
 		}
 	} else if (e.alpha >= 160) {
-		if (e.gamma < -10) {
+		if (e.gamma < -20 && e.beta > -20 && e.beta < 20) {
 			rotate = 'up'
-		} else if (e.gamma > -40) {
+		} else if (e.gamma > -40 && e.beta > -20 && e.beta < 20) {
 			rotate = 'down'
-		} else if (e.beta < -20) {
+		} else if (e.beta < -20 && e.gamma > -20 && e.gamma < -40) {
 			rotate = 'left'
-		} else if (e.beta > 20) {
+		} else if (e.beta > 20 && e.gamma > -20 && e.gamma < -40) {
 			rotate = 'right'
 		} else {
 			rotate = null
@@ -367,15 +367,6 @@ window.addEventListener('deviceorientation', e => {
 		document.querySelector(`#button-${oldRotate}`).classList.remove('active')
 		oldRotate = undefined
 	}
-
-	// deitado = alpha 180 / 360
-	// normal = beta 45 ~ 60
-
-	// esquerda gama -
-	// direita gama +
-	// frente beta -
-	// frente beta +
-
 })
 
 window.onresize = () => resizeScene()
