@@ -1,18 +1,5 @@
 import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3} from './three.module.js'
 import { GLTFLoader } from './GLTFLoader.js'
-/* import Stats from './stats.module.js' */
-
-if (!isLocalhost()) {
-	navigator.serviceWorker?.register('service-worker.js').then(reg => {
-		reg.addEventListener('updatefound', () => {
-			let newWorker = reg.installing
-			newWorker?.addEventListener('statechange', () => {
-				console.log('Update Installed. Restarting...')
-				if (newWorker.state == 'activated') location.reload(true)
-			})
-		})
-	})
-}
 
 const UP = 12
 const LEFT = 14
@@ -30,7 +17,6 @@ const MENU = 9
 const WIND = 8
 
 const clock = new Clock()
-/* const stats = new Stats() */
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
 const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
 const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
@@ -45,7 +31,10 @@ const destination = audioContext.createMediaStreamDestination()
 const objects = {}
 const keysPressed = {}
 
-var trouching = false
+var frames = 0
+var fps = 0
+var fpsLimit = 1 / 60
+var touching = false
 var rotate
 var lastDirection
 var gamepad
@@ -53,12 +42,12 @@ var floatY = 0
 var revertFloat = false
 var flying = false
 var clockDelta = 0
-var fpsLimit = 1 / 60
 var flyingAudio
 var audioAuthorized = false
 var touchControl = !(localStorage.getItem('touch') == 'false')
 var gyroscope = !isPC() && !(localStorage.getItem('gyroscope') == 'false')
 var bgmSource
+var lastFrameTime = performance.now()
 
 audioGain.connect(audioContext.destination)
 audioGain.gain.value = 0.25
@@ -142,14 +131,30 @@ function animate() {
 	requestAnimationFrame(animate)
 	clockDelta += clock.getDelta()
 	if (document.hidden) return
-	if (clockDelta < fpsLimit) return
+	if (fpsLimit && clockDelta < fpsLimit) return
 	renderer.render(scene, camera)
 	updateObjectsAnimations()
 	updateRotation()
 	updateGamepad()
 	updateFly()
-	/* stats.update() */
-	clockDelta = clockDelta % fpsLimit
+	updateFPSCounter()
+	fpsLimit ? clockDelta = clockDelta % fpsLimit : clockDelta = clockDelta
+}
+
+function updateFPSCounter() {
+	frames++
+	if (performance.now() < lastFrameTime + 1000) return
+	fps = Math.round(( frames * 1000 ) / ( performance.now() - lastFrameTime ))
+	if (!Number.isNaN(fps)) {
+		let ctx = document.querySelector('#fps').getContext('2d')
+		ctx.font = 'bold 20px sans-serif'
+		ctx.textAlign = 'end'
+		ctx.fillStyle = 'rgba(255,255,255,0.25)'
+		ctx.clearRect(0, 0, 80, 20)
+		ctx.fillText(`${fps} FPS`, 80, 20)
+	}
+	lastFrameTime = performance.now()
+	frames = 0
 }
 
 function updateObjectsAnimations() {
@@ -325,14 +330,14 @@ function initControls() {
 	document.querySelector('#button-fly').onmousedown = () => flying = true
 	document.querySelector('#button-fly').onmouseup = () => flying = false
 
-	document.querySelector('#button-left').ontouchstart = () => {rotate = 'left'; trouching = true}
-	document.querySelector('#button-left').ontouchend = () => {rotate = null; trouching = false}
-	document.querySelector('#button-right').ontouchstart = () => {rotate = 'right'; trouching = true}
-	document.querySelector('#button-right').ontouchend = () => {rotate = null; trouching = false}
-	document.querySelector('#button-up').ontouchstart = () => {rotate = 'up'; trouching = true}
-	document.querySelector('#button-up').ontouchend = () => {rotate = null; trouching = false}
-	document.querySelector('#button-down').ontouchstart = () => {rotate = 'down'; trouching = true}
-	document.querySelector('#button-down').ontouchend = () => {rotate = null; trouching = false}
+	document.querySelector('#button-left').ontouchstart = () => {rotate = 'left'; touching = true}
+	document.querySelector('#button-left').ontouchend = () => {rotate = null; touching = false}
+	document.querySelector('#button-right').ontouchstart = () => {rotate = 'right'; touching = true}
+	document.querySelector('#button-right').ontouchend = () => {rotate = null; touching = false}
+	document.querySelector('#button-up').ontouchstart = () => {rotate = 'up'; touching = true}
+	document.querySelector('#button-up').ontouchend = () => {rotate = null; touching = false}
+	document.querySelector('#button-down').ontouchstart = () => {rotate = 'down'; touching = true}
+	document.querySelector('#button-down').ontouchend = () => {rotate = null; touching = false}
 	document.querySelector('#button-fly').ontouchstart = () => flying = true
 	document.querySelector('#button-fly').ontouchend = () => flying = false
 }
@@ -340,7 +345,7 @@ function initControls() {
 function listenToDeviceOrientation() {
 	var oldRotate
 	window.ondeviceorientation = e => {
-		if (!gyroscope || trouching) return
+		if (!gyroscope || touching) return
 		if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
 			rotate = null
 		} else if (screen?.orientation?.angle >= 270 || orientation < 0) {
@@ -394,8 +399,6 @@ window.onresize = () => resizeScene()
 window.oncontextmenu = () => {return isLocalhost()}
 
 document.body.appendChild(renderer.domElement)
-/* document.body.appendChild(stats.dom)
-stats.begin() */
 
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
@@ -436,6 +439,19 @@ document.onclick = () => {
 		if (bgmBuffer) playBGM()
 		audio.play()
 		audioAuthorized = true
+	}
+}
+document.onvisibilitychange = () => {
+	if (document.hidden) {
+		rotate = null
+		flying = false
+		touching = false
+		audioGain.gain.value = 0
+		document.querySelectorAll('footer section button').forEach(el => {
+			el.classList.remove('active')
+		})
+	} else {
+		audioGain.gain.value = 0.25
 	}
 }
 

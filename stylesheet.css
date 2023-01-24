@@ -196,6 +196,12 @@ footer section label {
 	bottom: 0;
 	z-index: -2;
 }
+#fps {
+	position: absolute;
+	top: calc(24px + env(safe-area-inset-top, 0));
+	right: 12px;
+	z-index: 5;
+}
 @keyframes rotate {
 	from {
 		transform: rotate(0deg);
