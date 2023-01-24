@@ -27,9 +27,6 @@ const loader = new GLTFLoader()
 const vector = new Vector3()
 const scene = new Scene()
 const audio = new Audio()
-const audioContext = new AudioContext()
-const audioGain = audioContext.createGain()
-const destination = audioContext.createMediaStreamDestination()
 const objects = {}
 const keysPressed = {}
 
@@ -45,15 +42,17 @@ var revertFloat = false
 var flying = false
 var clockDelta = 0
 var flyingAudio
-var audioAuthorized = false
 var touchControl = !(localStorage.getItem('touch') == 'false')
 var gyroscope = !isPC() && !(localStorage.getItem('gyroscope') == 'false')
 var bgmSource
 var lastFrameTime = performance.now()
-
-audioGain.connect(audioContext.destination)
-audioGain.gain.value = 0.25
-audio.srcObject = destination.stream
+var gyroscopeAuthorization = false
+var audioAuthorized = false
+var audioContext
+var audioGain
+var bgmBuffer
+var seTurnBuffer
+var seFlyBuffer
 
 scene.background = undefined
 renderer.outputEncoding = sRGBEncoding
@@ -61,41 +60,6 @@ dirLight.position.set(10, 10, 0)
 renderer. setClearColor(0xffffff, 0)
 scene.add( ambientLight )
 scene.add( dirLight )
-
-var bgmBuffer
-fetch('../audio/bgm.mp3')
-.then(response => {
-	response.arrayBuffer()
-	.then(buffer => {
-		audioContext.decodeAudioData(buffer)
-		.then(audioData => {
-			bgmBuffer = audioData
-			if (audioAuthorized) playBGM()
-		})
-	})
-})
-var seTurnBuffer
-fetch('../audio/turn.mp3')
-.then(response => {
-	response.arrayBuffer()
-	.then(buffer => {
-		audioContext.decodeAudioData(buffer)
-		.then(audioData => {
-			seTurnBuffer = audioData
-		})
-	})
-})
-var seFlyBuffer
-fetch('../audio/fly.mp3')
-.then(response => {
-	response.arrayBuffer()
-	.then(buffer => {
-		audioContext.decodeAudioData(buffer)
-		.then(audioData => {
-			seFlyBuffer = audioData
-		})
-	})
-})
 
 loader.load(`./models/spaceship.glb`,
 	gltf => {
@@ -422,15 +386,59 @@ function requestOrientationPermission() {
 		.then(response => {
 			if (response == 'granted') {
 				listenToDeviceOrientation()
-			} if (response == 'denied') {
+			} else if (response == 'denied') {
 				document.querySelector('#menu-button-gyro-on').classList.add('off')
 				document.querySelector('#menu-button-gyro-off').classList.add('off')
 			}
+			gyroscopeAuthorization = true
 		})
 		.catch(error => {})
 	} else if (DeviceOrientationEvent) {
 		listenToDeviceOrientation()
+		gyroscopeAuthorization = true
 	}
+}
+
+function initAudio() {
+	audioContext = new AudioContext()
+	audioGain = audioContext.createGain()
+	const destination = audioContext.createMediaStreamDestination()
+	audioGain.connect(audioContext.destination)
+	audioGain.gain.value = 0.25
+	audio.srcObject = destination.stream
+	audio.play()
+	fetch('../audio/bgm.mp3')
+	.then(response => {
+		response.arrayBuffer()
+		.then(buffer => {
+			audioContext.decodeAudioData(buffer)
+			.then(audioData => {
+				bgmBuffer = audioData
+				playBGM()
+			})
+		})
+	})
+	fetch('../audio/turn.mp3')
+	.then(response => {
+		response.arrayBuffer()
+		.then(buffer => {
+			audioContext.decodeAudioData(buffer)
+			.then(audioData => {
+				seTurnBuffer = audioData
+			})
+		})
+	})
+	fetch('../audio/fly.mp3')
+	.then(response => {
+		response.arrayBuffer()
+		.then(buffer => {
+			audioContext.decodeAudioData(buffer)
+			.then(audioData => {
+				seFlyBuffer = audioData
+			})
+		})
+	})
+	audioAuthorized = true
 }
 
 window.onresize = () => resizeScene()
@@ -471,35 +479,31 @@ document.onreadystatechange = () => {
 	}
 }
 document.onclick = () => {
-	if (!isPC()) requestOrientationPermission()
 	document.querySelector('#menu-config').classList.remove('opened')
-	if (!audioAuthorized) {
-		if (bgmBuffer) playBGM()
-		audio.play()
-		audioAuthorized = true
-	}
+	if (!isPC() && !gyroscopeAuthorization) requestOrientationPermission()
+	if (!audioAuthorized) initAudio()
 }
 document.onvisibilitychange = () => {
 	if (document.hidden) {
 		rotate = null
 		flying = false
 		touching = false
-		audioGain.gain.value = 0
+		if (audioGain) audioGain.gain.value = 0
 		document.querySelectorAll('footer section button').forEach(el => {
 			el.classList.remove('active')
 		})
 	} else {
-		audioGain.gain.value = 0.25
+		if (audioGain) audioGain.gain.value = 0.25
 	}
 }
 
-function playBGM(startTime=0) {
-	if (!bgmBuffer || localStorage.getItem('bgm') == 'false') return
+function playBGM() {
+	if (!audioContext || !bgmBuffer || localStorage.getItem('bgm') == 'false') return
 	bgmSource = audioContext.createBufferSource()
 	bgmSource.buffer = bgmBuffer
 	bgmSource.loop = true
 	bgmSource.connect(audioGain)
-	bgmSource.start(startTime)
+	bgmSource.start(0)
 	bgmSource.onended = () => {
 		bgmSource.disconnect()
 		bgmSource = undefined
@@ -507,7 +511,7 @@ function playBGM(startTime=0) {
 }
 
 function playSE(buffer, loop=false) {
-	if (!buffer) return
+	if (!audioContext || !buffer) return
 	let src = audioContext.createBufferSource()
 	src.buffer = buffer
 	src.loop = loop
