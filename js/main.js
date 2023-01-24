@@ -176,14 +176,13 @@ function updateRotation() {
 }
 
 function updateFly() {
-	if (!objects[0] || !objects[1]) return
-	if (collide(objects[0], objects[1])) {
-		document.querySelector('#rays').classList.remove('show')
-		if (flyingAudio) flyingAudio.stop()
-		flyingAudio = undefined
-		return
-	}
 	if (flying) {
+		if (collide(objects[0], objects[1])) {
+			document.querySelector('#rays').classList.remove('show')
+			if (flyingAudio) flyingAudio.stop()
+			flyingAudio = undefined
+			return
+		}
 		document.querySelector('#rays').classList.add('show')
 		if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
 	} else {
@@ -219,9 +218,9 @@ function getVertices(obj) {
 	return vertices
 }
 function colisionCheck(a, b) {
-	for (let v of a.vertices) {
-		for (var vertexIndex = 0; vertexIndex < v.length; vertexIndex++) {
-			let localVertex = new Vector3().fromBufferAttribute(v, vertexIndex).clone()
+	for (let v in a.vertices) {
+		for (var vertexIndex = 0; vertexIndex < a.vertices.length; vertexIndex++) {
+			let localVertex = new Vector3().fromBufferAttribute(a.vertices[v], vertexIndex).clone()
 			let globalVertex = localVertex.applyMatrix4(a.matrix)
 			let directionVector = globalVertex.sub(a.position)
 			let ray = new Raycaster(a.position, directionVector.clone().normalize())
