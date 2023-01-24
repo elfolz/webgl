@@ -1,4 +1,4 @@
-import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3} from './three.module.js'
+import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3, Raycaster} from './three.module.js'
 import { GLTFLoader } from './gltfLoader.module.js'
 
 navigator.serviceWorker?.register('service-worker.js')
@@ -104,7 +104,6 @@ loader.load(`./models/spaceship.glb`,
 		objects[0].position.z = -10
 		objects[0].rotation.y = Math.PI
 		scene.add(objects[0])
-		resizeScene()
 	}, undefined, error => {
 		console.log(error)
 	}
@@ -117,7 +116,6 @@ loader.load(`./models/planet.glb`,
 		objects[1].position.z = -250
 		objects[1].scale.set(50, 50, 50)
 		scene.add(objects[1])
-		resizeScene()
 	}, undefined, error => {
 		console.log(error)
 	}
@@ -212,6 +210,13 @@ function updateRotation() {
 }
 
 function updateFly() {
+	if (!objects[0] || !objects[1]) return
+	if (collide(objects[0], objects[1])) {
+		document.querySelector('#rays').classList.remove('show')
+		if (flyingAudio) flyingAudio.stop()
+		flyingAudio = undefined
+		return
+	}
 	if (flying) {
 		document.querySelector('#rays').classList.add('show')
 		if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
@@ -234,6 +239,35 @@ function updateFly() {
 	document.querySelector('#rays').style.setProperty('top', `calc(-100% - ${angle}px)`)
 	objects[0].position.z += 0.1 * wDir.z
 	camera.position.z += 0.1 * wDir.z
+}
+
+function getVertices(obj) {
+	let vertices = []
+	if (obj.geometry) {
+		vertices= [...vertices, obj.geometry.attributes.position]
+	} else {
+		for (let i in obj.children) {
+			vertices= [...vertices, ...getVertices(obj.children[i])]
+		}
+	}
+	return vertices
+}
+function colisionCheck(a, b) {
+	let vertexes = getVertices(a)
+	for (let v of vertexes) {
+		for (var vertexIndex = 0; vertexIndex < vertexes.length; vertexIndex++) {
+			let localVertex = new Vector3().fromBufferAttribute(v, vertexIndex).clone()
+			let globalVertex = localVertex.applyMatrix4(a.matrix)
+			let directionVector = globalVertex.sub(a.position)
+			let ray = new Raycaster(a.position, directionVector.clone().normalize())
+			let collisionResults = ray.intersectObjects([b])
+			if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) return true
+		}
+	}
+	return false
+}
+function collide(a, b) {
+	return colisionCheck(a,b)||colisionCheck(b,a)||(a.position.z==b.position.z&&a.position.x==b.position.x&&a.position.y==b.position.y)
 }
 
 window.onkeydown = e => {
@@ -490,4 +524,5 @@ function isPC() {
 	return /(windows|macintosh)/i.test(navigator.userAgent)
 }
 
+resizeScene()
 animate()
