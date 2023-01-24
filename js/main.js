@@ -320,7 +320,31 @@ window.addEventListener('deviceorientation', e => {
 	console.log(`a ${e.alpha} - b ${e.beta} - g ${e.gamma}`)
 	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
 		rotate = null
-	} else if (e.alpha < 160) {
+	} else if (e.alpha >= 340) {
+		if (e.gamma < 20) {
+			rotate = 'up'
+		} else if (e.gamma > 40) {
+			rotate = 'down'
+		} else if (e.beta > 20) {
+			rotate = 'left'
+		} else if (e.beta < -20) {
+			rotate = 'right'
+		} else {
+			rotate = null
+		}
+	} else if (e.alpha >= 160) {
+		if (e.gamma < -20) {
+			rotate = 'up'
+		} else if (e.gamma > -40) {
+			rotate = 'down'
+		} else if (e.beta < -20) {
+			rotate = 'left'
+		} else if (e.beta > 20) {
+			rotate = 'right'
+		} else {
+			rotate = null
+		}
+	} else if (e.alpha > 70) {
 		if (e.beta < 20) {
 			rotate = 'up'
 		} else if (e.beta > 70) {
@@ -328,30 +352,6 @@ window.addEventListener('deviceorientation', e => {
 		} else if (e.gamma < -20) {
 			rotate = 'left'
 		} else if (e.gamma > 20) {
-			rotate = 'right'
-		} else {
-			rotate = null
-		}
-	} else if (e.alpha >= 340) {
-		if (e.gamma < 20 && e.beta < 20 & e.beta > -20) {
-			rotate = 'up'
-		} else if (e.gamma > 40 && e.beta < 20 & e.beta > -20) {
-			rotate = 'down'
-		} else if (e.beta > 20 && e.gamma > 20 && e.gamma < 40) {
-			rotate = 'left'
-		} else if (e.beta < -20 && e.gamma > 20 && e.gamma < 40) {
-			rotate = 'right'
-		} else {
-			rotate = null
-		}
-	} else if (e.alpha >= 160) {
-		if (e.gamma < -20 && e.beta > -20 && e.beta < 20) {
-			rotate = 'up'
-		} else if (e.gamma > -40 && e.beta > -20 && e.beta < 20) {
-			rotate = 'down'
-		} else if (e.beta < -20 && e.gamma > -20 && e.gamma < -40) {
-			rotate = 'left'
-		} else if (e.beta > 20 && e.gamma > -20 && e.gamma < -40) {
 			rotate = 'right'
 		} else {
 			rotate = null
