@@ -45,6 +45,7 @@ const destination = audioContext.createMediaStreamDestination()
 const objects = {}
 const keysPressed = {}
 
+var trouching = false
 var rotate
 var lastDirection
 var gamepad
@@ -214,25 +215,17 @@ function updateFly() {
 		}
 		return
 	}
-
 	let wDir = camera.getWorldDirection(vector)
-
 	let xMov = (objects[0].rotation.y % Math.PI) * 0.1 / (Math.PI/4)
 	let yMov = (objects[0].rotation.x % Math.PI) * 0.1 / (Math.PI/4)
-
 	/* objects[0].position.x += xMov
 	camera.position.x += xMov */
-
 	objects[0].position.y += yMov
 	camera.position.y += yMov
-
 	let angle = Math.min(yMov*10000, document.documentElement.clientHeight)
-
 	document.querySelector('#rays').style.setProperty('top', `calc(-100% - ${angle}px)`)
-
 	objects[0].position.z += 0.1 * wDir.z
 	camera.position.z += 0.1 * wDir.z
-
 }
 
 window.onkeydown = e => {
@@ -332,51 +325,71 @@ function initControls() {
 	document.querySelector('#button-fly').onmousedown = () => flying = true
 	document.querySelector('#button-fly').onmouseup = () => flying = false
 
-	document.querySelector('#button-left').ontouchstart = () => rotate = 'left'
-	document.querySelector('#button-left').ontouchend = () => rotate = null
-	document.querySelector('#button-right').ontouchstart = () => rotate = 'right'
-	document.querySelector('#button-right').ontouchend = () => rotate = null
-	document.querySelector('#button-up').ontouchstart = () => rotate = 'up'
-	document.querySelector('#button-up').ontouchend = () => rotate = null
-	document.querySelector('#button-down').ontouchstart = () => rotate = 'down'
-	document.querySelector('#button-down').ontouchend = () => rotate = null
+	document.querySelector('#button-left').ontouchstart = () => {rotate = 'left'; trouching = true}
+	document.querySelector('#button-left').ontouchend = () => {rotate = null; trouching = false}
+	document.querySelector('#button-right').ontouchstart = () => {rotate = 'right'; trouching = true}
+	document.querySelector('#button-right').ontouchend = () => {rotate = null; trouching = false}
+	document.querySelector('#button-up').ontouchstart = () => {rotate = 'up'; trouching = true}
+	document.querySelector('#button-up').ontouchend = () => {rotate = null; trouching = false}
+	document.querySelector('#button-down').ontouchstart = () => {rotate = 'down'; trouching = true}
+	document.querySelector('#button-down').ontouchend = () => {rotate = null; trouching = false}
 	document.querySelector('#button-fly').ontouchstart = () => flying = true
 	document.querySelector('#button-fly').ontouchend = () => flying = false
 }
 
-var oldRotate
-window.ondeviceorientation = e => {
-	if (!gyroscope) return
-	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
-		rotate = null
-	} else if (screen.orientation.angle >= 270) {
-		if (e.gamma < 20) rotate = 'up'
-		else if (e.gamma > 40) rotate = 'down'
-		else if (e.beta > 10) rotate = 'left'
-		else if (e.beta < -10) rotate = 'right'
-		else rotate = null
-	} else if (screen.orientation.angle >= 90) {
-		if (e.gamma > -40) rotate = 'up'
-		else if (e.gamma < -60) rotate = 'down'
-		else if (e.beta < -10) rotate = 'left'
-		else if (e.beta > 10) rotate = 'right'
-		else rotate = null
-	} else {
-		if (e.beta < 20) rotate = 'up'
-		else if (e.beta > 70) rotate = 'down'
-		else if (e.gamma < -20) rotate = 'left'
-		else if (e.gamma > 20) rotate = 'right'
-		else rotate = null
-	}
-	if (rotate) {
-		document.querySelector(`#button-${rotate}`).classList.add('active')
-		if (oldRotate && oldRotate != rotate) document.querySelector(`#button-${oldRotate}`).classList.remove('active')
-		oldRotate = rotate
-	} else if (oldRotate) {
-		document.querySelector(`#button-${oldRotate}`).classList.remove('active')
-		oldRotate = undefined
+function listenToDeviceOrientation() {
+	var oldRotate
+	window.ondeviceorientation = e => {
+		if (!gyroscope || trouching) return
+		if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
+			rotate = null
+		} else if (screen?.orientation?.angle >= 270 || orientation < 0) {
+			if (e.gamma < 20) rotate = 'up'
+			else if (e.gamma > 40) rotate = 'down'
+			else if (e.beta > 10) rotate = 'left'
+			else if (e.beta < -10) rotate = 'right'
+			else rotate = null
+		} else if (screen?.orientation?.angle >= 90 || orientation > 0) {
+			if (e.gamma > -40) rotate = 'up'
+			else if (e.gamma < -60) rotate = 'down'
+			else if (e.beta < -10) rotate = 'left'
+			else if (e.beta > 10) rotate = 'right'
+			else rotate = null
+		} else {
+			if (e.beta < 20) rotate = 'up'
+			else if (e.beta > 70) rotate = 'down'
+			else if (e.gamma < -20) rotate = 'left'
+			else if (e.gamma > 20) rotate = 'right'
+			else rotate = null
+		}
+		if (rotate) {
+			document.querySelector(`#button-${rotate}`).classList.add('active')
+			if (oldRotate && oldRotate != rotate) document.querySelector(`#button-${oldRotate}`).classList.remove('active')
+			oldRotate = rotate
+		} else if (oldRotate) {
+			document.querySelector(`#button-${oldRotate}`).classList.remove('active')
+			oldRotate = undefined
+		}
 	}
 }
+
+function requestOrientationPermission() {
+	if (typeof DeviceOrientationEvent['requestPermission'] === 'function') {
+		DeviceOrientationEvent['requestPermission']()
+		.then(response => {
+			if (response == 'granted') {
+				listenToDeviceOrientation()
+			} if (response == 'denied') {
+				document.querySelector('#menu-button-gyro-on').classList.add('off')
+				document.querySelector('#menu-button-gyro-off').classList.add('off')
+			}
+		})
+		.catch(error => {})
+	} else if (DeviceOrientationEvent) {
+		listenToDeviceOrientation()
+	}
+}
+
 window.onresize = () => resizeScene()
 window.oncontextmenu = () => {return isLocalhost()}
 
@@ -417,6 +430,7 @@ document.onreadystatechange = () => {
 	}
 }
 document.onclick = () => {
+	if (!isPC()) requestOrientationPermission()
 	document.querySelector('#menu-config').classList.remove('opened')
 	if (!audioAuthorized) {
 		if (bgmBuffer) playBGM()
