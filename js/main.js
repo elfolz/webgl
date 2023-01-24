@@ -316,48 +316,25 @@ function initControls() {
 }
 
 var oldRotate
-window.addEventListener('deviceorientation', e => {
-	console.log(`a ${e.alpha} - b ${e.beta} - g ${e.gamma}`)
-	if (e.beta >= -1 && e.beta <= 1 && e.gamma >= -1 && e.gamma <= 1) {
-		rotate = null
-	} else if (e.alpha >= 340) {
-		if (e.gamma < 20) {
-			rotate = 'up'
-		} else if (e.gamma > 40) {
-			rotate = 'down'
-		} else if (e.beta > 20) {
-			rotate = 'left'
-		} else if (e.beta < -20) {
-			rotate = 'right'
-		} else {
-			rotate = null
-		}
-	} else if (e.alpha >= 160) {
-		if (e.gamma < -20) {
-			rotate = 'up'
-		} else if (e.gamma > -40) {
-			rotate = 'down'
-		} else if (e.beta < -20) {
-			rotate = 'left'
-		} else if (e.beta > 20) {
-			rotate = 'right'
-		} else {
-			rotate = null
-		}
-	} else if (e.alpha > 70) {
-		if (e.beta < 20) {
-			rotate = 'up'
-		} else if (e.beta > 70) {
-			rotate = 'down'
-		} else if (e.gamma < -20) {
-			rotate = 'left'
-		} else if (e.gamma > 20) {
-			rotate = 'right'
-		} else {
-			rotate = null
-		}
+window.ondeviceorientation = e => {
+	if (screen.orientation.angle >= 270) {
+		if (e.gamma < 20) rotate = 'up'
+		else if (e.gamma > 40) rotate = 'down'
+		else if (e.beta > 10) rotate = 'left'
+		else if (e.beta < -10) rotate = 'right'
+		else rotate = null
+	} else if (screen.orientation.angle >= 90) {
+		if (e.gamma > -40) rotate = 'up'
+		else if (e.gamma < -60) rotate = 'down'
+		else if (e.beta < -10) rotate = 'left'
+		else if (e.beta > 10) rotate = 'right'
+		else rotate = null
 	} else {
-		rotate = null
+		if (e.beta < 20) rotate = 'up'
+		else if (e.beta > 70) rotate = 'down'
+		else if (e.gamma < -20) rotate = 'left'
+		else if (e.gamma > 20) rotate = 'right'
+		else rotate = null
 	}
 	if (rotate) {
 		document.querySelector(`#button-${rotate}`).classList.add('active')
@@ -367,8 +344,7 @@ window.addEventListener('deviceorientation', e => {
 		document.querySelector(`#button-${oldRotate}`).classList.remove('active')
 		oldRotate = undefined
 	}
-})
-
+}
 window.onresize = () => resizeScene()
 window.oncontextmenu = () => {return isLocalhost()}
 

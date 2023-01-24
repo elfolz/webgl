@@ -2,9 +2,9 @@
 	"name": "webgl",
 	"version": "1.0.0",
 	"scripts": {
-		"serve": "http-server ./ -p 8080 -c-1",
-		"adb:c": "adb connect 192.168.0.134:40531",
-		"adb:d": "adb disconnect 192.168.0.134:40531"
+		"serve": "http-server ./ -p 8080 -c-1 -S -C ./cert.pem",
+		"adb:c": "adb connect 192.168.0.134:41405",
+		"adb:d": "adb disconnect 192.168.0.134:41405"
 	},
 	"devDependencies": {
 		"http-server": "^14.1.1"
