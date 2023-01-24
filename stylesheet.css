@@ -57,9 +57,9 @@ header section {
 	width: fit-content;
 	background-color: var(--color-button);
 	border-radius: 6px;
-	padding: 6px 12px;
 	transition: all 250ms ease-in-out;
 	opacity: 0;
+	padding: 6px;
 	transform: scaleY(0);
 	overflow: hidden;
 	box-shadow: 4px 4px 8px rgba(0,0,0,0.25);
@@ -72,12 +72,18 @@ header section.opened {
 header section span {
 	display: flex;
 	align-items: center;
-	padding: 8px 0;
+	padding: 6px;
+	height: 42px;
 	color: whitesmoke;
 	cursor: pointer;
+	border-radius: 4px;
+	transition: all 250ms ease-in-out;
 }
 header section span svg {
 	margin-right: 12px;
+}
+header section span:hover, header section span:active {
+	background-color: var(--color-button);
 }
 header section span svg path {
 	fill: whitesmoke;

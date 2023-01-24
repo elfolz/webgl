@@ -266,25 +266,26 @@ window.onkeyup = e => {
 }
 
 function initControls() {
-	document.querySelector('#button-config').onclick = () => {
+	document.querySelector('#button-config').onclick = e => {
+		e.stopPropagation()
 		document.querySelector('#menu-config').classList.toggle('opened')
 	}
 	document.querySelector('#menu-button-music-off').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		localStorage.setItem('bgm', 'false')
 		document.querySelector('#menu-button-music-off').classList.add('off')
 		document.querySelector('#menu-button-music-on').classList.remove('off')
 		if (bgmSource) bgmSource.stop()
 	}
 	document.querySelector('#menu-button-music-on').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		localStorage.setItem('bgm', 'true')
 		document.querySelector('#menu-button-music-on').classList.add('off')
 		document.querySelector('#menu-button-music-off').classList.remove('off')
 		playBGM()
 	}
 	document.querySelector('#menu-button-touch-off').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		touchControl = false
 		localStorage.setItem('touch', 'false')
 		document.querySelector('#menu-button-touch-off').classList.add('off')
@@ -292,7 +293,7 @@ function initControls() {
 		document.querySelectorAll('footer')?.forEach(el => el.classList.add('hide'))
 	}
 	document.querySelector('#menu-button-touch-on').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		touchControl = true
 		localStorage.setItem('touch', 'true')
 		document.querySelector('#menu-button-touch-on').classList.add('off')
@@ -305,7 +306,7 @@ function initControls() {
 		document.querySelector('#menu-button-gyro-off').classList.add('off')
 	}
 	document.querySelector('#menu-button-gyro-off').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		gyroscope = false
 		rotate = null
 		localStorage.setItem('gyroscope', 'false')
@@ -313,7 +314,7 @@ function initControls() {
 		document.querySelector('#menu-button-gyro-on').classList.remove('off')
 	}
 	document.querySelector('#menu-button-gyro-on').onclick = e => {
-		e.preventDefault()
+		e.stopPropagation()
 		gyroscope = true
 		localStorage.setItem('gyroscope', 'true')
 		document.querySelector('#menu-button-gyro-on').classList.add('off')
@@ -416,6 +417,7 @@ document.onreadystatechange = () => {
 	}
 }
 document.onclick = () => {
+	document.querySelector('#menu-config').classList.remove('opened')
 	if (!audioAuthorized) {
 		if (bgmBuffer) playBGM()
 		audio.play()
