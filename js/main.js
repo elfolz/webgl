@@ -1,6 +1,8 @@
 import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3} from './three.module.js'
 import { GLTFLoader } from './gltfLoader.module.js'
 
+navigator.serviceWorker?.register('service-worker.js')
+
 const UP = 12
 const LEFT = 14
 const RIGHT = 15
@@ -133,11 +135,11 @@ function animate() {
 	if (document.hidden) return
 	if (fpsLimit && clockDelta < fpsLimit) return
 	renderer.render(scene, camera)
+	updateFPSCounter()
 	updateObjectsAnimations()
 	updateRotation()
 	updateGamepad()
 	updateFly()
-	updateFPSCounter()
 	fpsLimit ? clockDelta = clockDelta % fpsLimit : clockDelta = clockDelta
 }
 
@@ -166,7 +168,8 @@ function updateObjectsAnimations() {
 			if (floatY >= 0.0025) revertFloat = true
 			else floatY += 0.00001
 		}
-		floatY = Math.min(floatY, 0.0025)
+		if (floatY > 0.0025) floatY = 0.0025
+		if (floatY < -0.0025) floatY = -0.0025
 		objects[0].translateY(floatY)
 	}
 	if (objects[1]) objects[1].rotation.y += 0.001
