@@ -2,6 +2,10 @@ import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLig
 import { GLTFLoader } from './gltfLoader.module.js'
 
 navigator.serviceWorker?.register('service-worker.js')
+navigator.serviceWorker.onmessage = m => {
+	console.info('Update found!')
+	if (m?.data == 'update') location.reload(true)
+}
 
 const UP = 12
 const LEFT = 14
