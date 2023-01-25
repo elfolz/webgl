@@ -20,7 +20,7 @@ const WIND = 8
 
 const clock = new Clock()
 const renderer = new WebGLRenderer({antialias: true, alpha: true})
-const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 100000)
+const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
 const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
 const dirLight = new DirectionalLight( 0xFFFFC8, 1.5 )
 const loader = new GLTFLoader()
@@ -53,21 +53,23 @@ var audioGain
 var bgmBuffer
 var seTurnBuffer
 var seFlyBuffer
+var dummyCamera
 
 scene.background = undefined
 renderer.outputEncoding = sRGBEncoding
-dirLight.position.set(10, 10, 0)
+dirLight.position.set(-10, 10, 0)
 renderer. setClearColor(0xffffff, 0)
 scene.add( ambientLight )
 scene.add( dirLight )
 
 loader.load(`./models/spaceship.glb`,
 	gltf => {
-		objects[0] = gltf.scene
-		objects[0].position.y = -3
-		objects[0].position.z = -10
-		objects[0].rotation.y = Math.PI
+		objects[0] = gltf.scene.children.find(el => el.name == 'SpaceShip')
 		objects[0].vertices = getVertices(objects[0])
+		dummyCamera = camera.clone()
+		dummyCamera.position.set(0, objects[0].position.y+6, objects[0].position.z-10)
+		dummyCamera.lookAt(0, 6, 0)
+		objects[0].add(dummyCamera)
 		scene.add(objects[0])
 	}, undefined, error => {
 		console.log(error)
@@ -76,9 +78,9 @@ loader.load(`./models/spaceship.glb`,
 
 loader.load(`./models/planet.glb`,
 	gltf => {
-		objects[1] = gltf.scene
+		objects[1] = gltf.scene.children[0]
 		objects[1].position.y = 100
-		objects[1].position.z = -250
+		objects[1].position.z = 250
 		objects[1].scale.set(50, 50, 50)
 		objects[1].vertices = getVertices(objects[1])
 		scene.add(objects[1])
@@ -101,6 +103,7 @@ function animate() {
 	renderer.render(scene, camera)
 	updateFPSCounter()
 	updateObjectsAnimations()
+	updateCameraPosition()
 	updateRotation()
 	updateGamepad()
 	updateFly()
@@ -124,7 +127,7 @@ function updateFPSCounter() {
 }
 
 function updateObjectsAnimations() {
-	if (objects[0]) {
+	/* if (objects[0]) {
 		if (revertFloat) {
 			if (floatY <= -0.0025) revertFloat = false
 			else floatY -= 0.00001
@@ -135,7 +138,7 @@ function updateObjectsAnimations() {
 		if (floatY > 0.0025) floatY = 0.0025
 		if (floatY < -0.0025) floatY = -0.0025
 		objects[0].translateY(floatY)
-	}
+	} */
 	if (objects[1]) objects[1].rotation.y += 0.001
 }
 
@@ -162,19 +165,29 @@ function updateGamepad() {
 	else if (gamepad.axes[1] <= -0.5 || gamepad.buttons[UP].pressed) rotate = 'up'
 	else if (gamepad.axes[1] >= 0.5 || gamepad.buttons[DOWN].pressed) rotate = 'down'
 	else rotate = null
-	flying = gamepad.buttons[A].pressed
+	flying = gamepad.buttons[A].pressed || gamepad.buttons[B].pressed || gamepad.buttons[X].pressed || gamepad.buttons[Y].pressed
 	if (flying && !gamepadVibrating) vibrateGamepad()
 }
 
 function updateRotation() {
-	if (rotate == 'left') objects[0].rotation.y -= 0.01
-	if (rotate == 'right') objects[0].rotation.y += 0.01
-	if (rotate == 'up') objects[0].rotation.x -= 0.01
-	if (rotate == 'down') objects[0].rotation.x += 0.01
+	if (!objects[0]) return
+	if (rotate == 'left') objects[0].rotation.y += 0.025
+	if (rotate == 'right') objects[0].rotation.y -= 0.025
+	if (rotate == 'up') objects[0].rotation.x -= 0.025
+	if (rotate == 'down') objects[0].rotation.x += 0.025
 	if (rotate && lastDirection != rotate) {
 		if (audioAuthorized) playSE(seTurnBuffer)
 	}
 	lastDirection = rotate
+}
+
+function updateCameraPosition() {
+	if (!objects[0]) return
+	let target = objects[0].clone()
+	dummyCamera.getWorldPosition(target.position)
+	dummyCamera.getWorldQuaternion(target.quaternion)
+	camera.position.lerp(target.position, 0.25)
+	camera.quaternion.slerp(target.quaternion, 0.25)
 }
 
 function vibrateGamepad() {
@@ -201,6 +214,7 @@ function updateFly() {
 			document.querySelector('#rays').classList.remove('show')
 			if (flyingAudio) flyingAudio.stop()
 			flyingAudio = undefined
+			return
 		} else {
 			document.querySelector('#rays').classList.add('show')
 			if (!flyingAudio) flyingAudio = playSE(seFlyBuffer, true)
@@ -213,23 +227,12 @@ function updateFly() {
 		}
 		return
 	}
-	let wDir = camera.getWorldDirection(vector)
-	let xMov = (objects[0].rotation.y % Math.PI) * 0.1 / (Math.PI/4)
-	let yMov = (objects[0].rotation.x % Math.PI) * 0.1 / (Math.PI/4)
-	/* objects[0].position.x += xMov
-	camera.position.x += xMov */
-	objects[0].position.y += yMov
-	camera.position.y += yMov
-	let angle = Math.min(yMov*10000, document.documentElement.clientHeight)
-	document.querySelector('#rays').style.setProperty('top', `calc(-100% - ${angle}px)`)
-	objects[0].position.z += 0.1 * wDir.z
-	camera.position.z += 0.1 * wDir.z
-
+	let dir = camera.getWorldDirection(objects[0].clone().position)
+	objects[0].position.add(dir.multiplyScalar(0.5))
 	if (!isPC() && !gamepad && performance.now() > lastVibration + 100) {
 		try {navigator.vibrate(50)} catch(e){}
 		lastVibration = performance.now()
 	}
-
 }
 
 function getVertices(obj) {
@@ -244,20 +247,22 @@ function getVertices(obj) {
 	return vertices
 }
 function colisionCheck(a, b) {
-	for (let v in a.vertices) {
-		for (var vertexIndex = 0; vertexIndex < a.vertices.length; vertexIndex++) {
-			let localVertex = new Vector3().fromBufferAttribute(a.vertices[v], vertexIndex).clone()
-			let globalVertex = localVertex.applyMatrix4(a.matrix)
-			let directionVector = globalVertex.sub(a.position)
-			let ray = new Raycaster(a.position, directionVector.clone().normalize())
-			let collisionResults = ray.intersectObjects([b])
-			if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) return true
-		}
-	}
-	return false
+	return a.vertices.some((el, i) => {
+		let localVertex = new Vector3().fromBufferAttribute(el, i).clone()
+		let globalVertex = localVertex.applyMatrix4(a.matrix)
+		let directionVector = globalVertex.sub(a.position)
+		let ray = new Raycaster(a.position, directionVector.normalize())
+		let collisionResults = ray.intersectObjects([b])
+		return collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()
+	})
 }
 function collide(a, b) {
-	return colisionCheck(a,b)||colisionCheck(b,a)||(a.position.z==b.position.z&&a.position.x==b.position.x&&a.position.y==b.position.y)
+	let collide = colisionCheck(a, b)
+	if (collide) return true
+	collide = colisionCheck(b, a)
+	if (collide) return true
+	collide = a.position.z==b.position.z&&a.position.x==b.position.x&&a.position.y==b.position.y
+	return collide
 }
 
 window.onkeydown = e => {
