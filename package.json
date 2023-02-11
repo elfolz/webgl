@@ -2,8 +2,8 @@
 	"name": "webgl",
 	"version": "1.0.0",
 	"scripts": {
-		"serve": "http-server ./ -p 8080 -c-1 -g",
-		"ssl": "http-server ./ -p 8080 -c-1 -g -S -C ./cert/cert.crt -K ./cert/cert.key",
+		"serve": "http-server ./ -p 8092 -c-1 -g",
+		"ssl": "http-server ./ -p 8092 -c-1 -g -S -C ./cert/cert.crt -K ./cert/cert.key",
 		"adb:c": "adb connect 192.168.0.134:41405",
 		"adb:d": "adb disconnect 192.168.0.134:41405"
 	},

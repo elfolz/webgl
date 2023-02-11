@@ -1,10 +1,12 @@
-import {Clock, WebGLRenderer, Scene, PerspectiveCamera, sRGBEncoding, AmbientLight, DirectionalLight, Vector3, Raycaster} from './three.module.js'
+import * as THREE from './three.module.js'
 import { GLTFLoader } from './gltfLoader.module.js'
 
-navigator.serviceWorker?.register('service-worker.js')
-navigator.serviceWorker.onmessage = m => {
-	console.info('Update found!')
-	if (m?.data == 'update') location.reload(true)
+if (location.protocol.startsWith('https')) {
+	navigator.serviceWorker.register('service-worker.js')
+	navigator.serviceWorker.onmessage = m => {
+		console.info('Update found!')
+		if (m?.data == 'update') location.reload(true)
+	}
 }
 
 const UP = 12
@@ -22,14 +24,17 @@ const LT = 6
 const MENU = 9
 const WIND = 8
 
-const clock = new Clock()
-const renderer = new WebGLRenderer({antialias: true, alpha: true})
-const camera = new PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
-const ambientLight = new AmbientLight( 0xFFFFFF, 0.005 )
-const dirLight = new DirectionalLight( 0xFFFFC8, 1.5 )
+const clock = new THREE.Clock()
+const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true})
+const camera = new THREE.PerspectiveCamera(75, document.documentElement.clientWidth / document.documentElement.clientHeight, 0.1, 1000)
+const ambientLight = new THREE.AmbientLight( 0xFFFFFF, 0.005 )
+const dirLight = new THREE.DirectionalLight( 0xFFFFC8, 1.5 )
+const textureLoader = new THREE.TextureLoader()
 const loader = new GLTFLoader()
-const vector = new Vector3()
-const scene = new Scene()
+const vector = new THREE.Vector3()
+const scene = new THREE.Scene()
+const caster = new THREE.Raycaster()
+const vertex = new THREE.Vector3()
 const audio = new Audio()
 const objects = {}
 const keysPressed = {}
@@ -58,9 +63,10 @@ var bgmBuffer
 var seTurnBuffer
 var seFlyBuffer
 var dummyCamera
+var lastVibration = 0
 
 scene.background = undefined
-renderer.outputEncoding = sRGBEncoding
+renderer.outputEncoding = THREE.sRGBEncoding
 dirLight.position.set(-10, 10, 0)
 renderer. setClearColor(0xffffff, 0)
 scene.add( ambientLight )
@@ -69,29 +75,37 @@ scene.add( dirLight )
 loader.load(`./models/spaceship.glb`,
 	gltf => {
 		objects[0] = gltf.scene.children.find(el => el.name == 'SpaceShip')
-		objects[0].vertices = getVertices(objects[0])
+		objects[0].castShadow = true
+		objects[0].receiveShadow = true
 		dummyCamera = camera.clone()
 		dummyCamera.position.set(0, objects[0].position.y+6, objects[0].position.z-10)
 		dummyCamera.lookAt(0, 6, 0)
 		objects[0].add(dummyCamera)
 		scene.add(objects[0])
+		objects[0].collider = new THREE.Mesh(
+			new THREE.SphereGeometry(1.73),
+			new THREE.MeshBasicMaterial({transparent: true, opacity: 0})
+		)
+		/* objects[0].collider.scale.setScalar(1.73) */
+		objects[0].add(objects[0].collider)
 	}, undefined, error => {
 		console.log(error)
 	}
 )
 
-loader.load(`./models/planet.glb`,
-	gltf => {
-		objects[1] = gltf.scene.children[0]
-		objects[1].position.y = 100
-		objects[1].position.z = 250
-		objects[1].scale.set(50, 50, 50)
-		objects[1].vertices = getVertices(objects[1])
-		scene.add(objects[1])
-	}, undefined, error => {
-		console.log(error)
-	}
-)
+textureLoader.load('./img/planet.jpg', texture => {
+	texture.encoding = THREE.sRGBEncoding
+	objects[1] = new THREE.Mesh(
+		new THREE.SphereGeometry(50),
+		new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide})
+	)
+	objects[1].position.y = 100
+	objects[1].position.z = 250
+	objects[1].name = 'planet'
+	objects[1].castShadow = true
+	objects[1].receiveShadow = true
+	scene.add(objects[1])
+})
 
 function resizeScene() {
 	camera.aspect = document.documentElement.clientWidth / document.documentElement.clientHeight
@@ -211,7 +225,6 @@ function vibrateGamepad() {
 	})
 }
 
-var lastVibration = 0
 function updateFly() {
 	if (flying) {
 		if (collide(objects[0], objects[1])) {
@@ -239,34 +252,27 @@ function updateFly() {
 	}
 }
 
-function getVertices(obj) {
-	let vertices = []
-	if (obj.geometry) {
-		vertices= [...vertices, obj.geometry.attributes.position]
-	} else {
-		for (let i in obj.children) {
-			vertices= [...vertices, ...getVertices(obj.children[i])]
-		}
+function getDistance(a, b) {
+	/* if (a.lastCollisionUpdate > (performance.now()-500)) return
+	a.lastCollisionUpdate = performance.now() */
+	let verts = (a.collider ?? a).geometry.attributes.position
+	for (let i = 0; i < verts.count; i++) {
+		let localVertex = vertex.fromBufferAttribute(verts, i)
+		let globalVertex = localVertex.applyMatrix4((a.collider ?? a).matrix)
+		let directionVector = globalVertex.sub((a.collider ?? a).position)
+		caster.set((a.collider ?? a).position, directionVector.normalize())
+		let collisionResults = caster.intersectObjects([(b.collider ?? b)])
+		let collided = collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()
+		if(collisionResults.length > 0) return {distance: collisionResults[0].distance, collided: collided}
 	}
-	return vertices
-}
-function colisionCheck(a, b) {
-	return a.vertices.some((el, i) => {
-		let localVertex = new Vector3().fromBufferAttribute(el, i).clone()
-		let globalVertex = localVertex.applyMatrix4(a.matrix)
-		let directionVector = globalVertex.sub(a.position)
-		let ray = new Raycaster(a.position, directionVector.normalize())
-		let collisionResults = ray.intersectObjects([b])
-		return collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()
-	})
+	return getDistance(b, a)
 }
 function collide(a, b) {
-	let collide = colisionCheck(a, b)
-	if (collide) return true
-	collide = colisionCheck(b, a)
-	if (collide) return true
-	collide = a.position.z==b.position.z&&a.position.x==b.position.x&&a.position.y==b.position.y
-	return collide
+	return false
+	/* let distance = getDistance(a, b)
+	if (distance?.collided) return true
+	distance = a.position.z==b.position.z&&a.position.x==b.position.x&&a.position.y==b.position.y
+	return distance */
 }
 
 window.onkeydown = e => {
